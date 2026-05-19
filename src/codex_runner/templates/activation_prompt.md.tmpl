@@ -1,0 +1,18 @@
+You are executing exactly one task inside the target repository.
+
+Task details:
+{{TASK_MARKDOWN}}
+
+Strict constraints:
+- Modify only these files:
+{{FILES_LIST}}
+- Run these tests/verification commands:
+{{TESTS_LIST}}
+- Do not run any git add/commit commands.
+- Do not edit campaign mapping blocks or runner metadata files.
+
+Return JSON that conforms to task_result.schema.json with:
+- status: success | failed | blocked
+- summary
+- tests_ran
+- notes

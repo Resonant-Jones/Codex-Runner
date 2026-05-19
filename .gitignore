@@ -1,0 +1,45 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.envrc
+
+# Editor and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs and local state
+*.log
+*.sqlite3
+*.sqlite
+*.db
+
+# Environment and secrets
+.env
+.env.*
+*.key
+*.pem
+*.token
+
+# Local auth/config payloads
+auth.json
+config.local.*
+*.local.toml
+*.local.yaml
+*.local.yml

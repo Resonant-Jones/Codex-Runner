@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resonantconstructs.ai/schemas/campaign_output.legacy.schema.json",
+  "title": "Legacy Campaign Output (Deprecated)",
+  "description": "Deprecated single-campaign schema retained for historical compatibility. The deterministic runner uses campaign_set.schema.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "campaign_id",
+    "campaign_slug",
+    "campaign_doc_path",
+    "campaign_markdown",
+    "tasks"
+  ],
+  "properties": {
+    "campaign_id": {
+      "type": "string"
+    },
+    "campaign_slug": {
+      "type": "string"
+    },
+    "campaign_doc_path": {
+      "type": "string"
+    },
+    "campaign_markdown": {
+      "type": "string"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    }
+  }
+}

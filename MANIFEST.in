@@ -1,0 +1,8 @@
+include README.md
+include SAFETY.md
+include EVALUATION-LICENSE.md
+include CHANGELOG.md
+recursive-include src/codex_runner/prompts *.md
+recursive-include src/codex_runner/schemas *.json
+recursive-include src/codex_runner/templates *
+recursive-include scripts *.sh
