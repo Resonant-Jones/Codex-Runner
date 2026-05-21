@@ -925,6 +925,56 @@ def render_compiler_prompt(
     return rendered
 
 
+def render_task_prompt(
+    campaign: dict[str, Any],
+    task: dict[str, Any],
+    *,
+    task_artifact_path: str,
+    run_id: str,
+) -> str:
+    """Render the full execution prompt for a single task.
+
+    The task's activation_prompt remains the final instruction, but it is no
+    longer the entire context. This preserves deterministic task execution while
+    giving the provider the campaign brief, task artifact, file scope, tests,
+    dependencies, risk, and receipt contract needed to act coherently.
+    """
+
+    def format_list(label: str, values: Any) -> str:
+        if not isinstance(values, list) or not values:
+            return f"{label}:\n- (none)"
+        return f"{label}:\n" + "\n".join(f"- {item}" for item in values)
+
+    return (
+        "You are executing one task from a deterministic Campaign Runner plan.\n\n"
+        "Runner Constraints:\n"
+        "- Output JSON only matching task_result.schema.json.\n"
+        "- Do not modify files outside the allowed file scope.\n"
+        "- If listed tests are relevant and runnable, run them or explain why they were not run.\n"
+        "- Preserve existing architecture and avoid unrelated refactors.\n"
+        "- Keep changes minimal, scoped, and auditable.\n\n"
+        "Execution Context:\n"
+        f"- run_id: {run_id}\n"
+        f"- campaign_id: {campaign.get('campaign_id')}\n"
+        f"- campaign_slug: {campaign.get('campaign_slug')}\n"
+        f"- task_id: {task.get('id')}\n"
+        f"- task_slug: {task.get('slug')}\n"
+        f"- area: {task.get('area')}\n"
+        f"- risk: {task.get('risk')}\n"
+        f"- commit_message: {task.get('commit_message')}\n"
+        f"- task_artifact_path: {task_artifact_path}\n\n"
+        "Campaign Brief:\n"
+        f"{str(campaign.get('campaign_markdown') or '').rstrip()}\n\n"
+        "Task Artifact Markdown:\n"
+        f"{str(task.get('task_artifact_markdown') or '').rstrip()}\n\n"
+        f"{format_list('Allowed File Scope', task.get('files'))}\n\n"
+        f"{format_list('Dependencies', task.get('dependencies'))}\n\n"
+        f"{format_list('Validation / Tests', task.get('tests'))}\n\n"
+        "Activation Prompt:\n"
+        f"{str(task.get('activation_prompt') or '').rstrip()}\n"
+    )
+
+
 def _schema_required_keys(schema: dict[str, Any]) -> set[str]:
     required = schema.get("required")
     if not isinstance(required, list):
@@ -986,7 +1036,7 @@ def _candidate_payload_dicts(raw_value: Any) -> list[dict[str, Any]]:
             continue
         if isinstance(current, str):
             text = current.strip()
-            if not text or text in seen_strings or text[0] not in "{[":
+            if not text or text in seen_strings or text[0] not in "[{":
                 continue
             seen_strings.add(text)
             try:
@@ -1320,6 +1370,7 @@ def write_run_meta(
 def run_task_agent(
     *,
     repo_root: Path,
+    prompt_text: str,
     task: dict[str, Any],
     task_result_schema_file: Path,
     provider: str,
@@ -1333,7 +1384,7 @@ def run_task_agent(
         run_provider_exec(
             repo_root,
             provider=provider,
-            prompt_text=str(task["activation_prompt"]),
+            prompt_text=prompt_text,
             output_schema=task_result_schema_file,
             output_path=output,
             model=model,
@@ -1687,8 +1738,19 @@ def run_pass(
                 ][task_id]
                 task_artifact_abs = repo_root / task_artifact_rel
 
+                task_prompt_text = render_task_prompt(
+                    campaign,
+                    task,
+                    task_artifact_path=task_artifact_rel,
+                    run_id=run_id,
+                )
+                task_prompt_rel = run_dir_rel / f"task_prompt_{to_lower_snake(task_id)}.md"
+                task_prompt_abs = repo_root / task_prompt_rel
+                text_write(task_prompt_abs, task_prompt_text)
+
                 result = run_task_agent(
                     repo_root=repo_root,
+                    prompt_text=task_prompt_text,
                     task=task,
                     task_result_schema_file=args.task_result_schema_file,
                     provider=args.provider,
@@ -1701,7 +1763,7 @@ def run_pass(
                     repo_root,
                     task,
                     task_artifact_path=task_artifact_rel,
-                    run_artifact_allowlist=[],
+                    run_artifact_allowlist=[str(task_prompt_rel.as_posix())],
                     debug=args.debug,
                 )
 
@@ -1751,6 +1813,7 @@ def run_pass(
                 receipt_paths = [
                     task_artifact_rel,
                     campaign_doc_rel,
+                    str(task_prompt_rel.as_posix()),
                     str(STATE_PATH.as_posix()),
                     str(STATE_TRANSITIONS_PATH.as_posix()),
                 ]
@@ -1768,6 +1831,7 @@ def run_pass(
                     {
                         "type": "task",
                         "task_id": task_id,
+                        "task_prompt_path": str(task_prompt_rel.as_posix()),
                         "status": result["status"],
                         "implementation_commit": impl_hash,
                         "receipt_commit": receipt_hash,
