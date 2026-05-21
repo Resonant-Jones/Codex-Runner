@@ -122,3 +122,12 @@ Codex Runner is currently a private-alpha friend-share package.
 
 Interfaces, execution semantics, packaging strategy, and licensing terms may change without notice as the system evolves.
 
+---
+
+Project Links
+Find more about Codexify and Resonant Constructs here:
+
+Website: https://ResonantConstructs.ai
+Codexify space: https://Codexify.Space
+Community: https://reddit.com/r/ResonantConstructs
+Discord: https://discord.gg/C6AvyWpd
