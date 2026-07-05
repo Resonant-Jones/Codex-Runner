@@ -160,6 +160,37 @@ def test_main_uses_resolved_cli_args(
     assert observed["cli_args"] == MINIMAL_ARGS
 
 
+def test_main_dispatches_guardian_subcommand(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        runner, "resolve_entry_argv", lambda _argv: ["guardian", "validate-plan-pack"]
+    )
+
+    observed: dict[str, object] = {"argv": None}
+
+    class StubGuardianModule:
+        @staticmethod
+        def main(argv: list[str]) -> int:
+            observed["argv"] = argv
+            return 0
+
+    import sys
+
+    original = sys.modules.get("codex_runner.guardian.runner")
+    sys.modules["codex_runner.guardian.runner"] = StubGuardianModule
+    try:
+        exit_code = runner.main([])
+    finally:
+        if original is None:
+            del sys.modules["codex_runner.guardian.runner"]
+        else:
+            sys.modules["codex_runner.guardian.runner"] = original
+
+    assert exit_code == 0
+    assert observed["argv"] == ["validate-plan-pack"]
+
+
 def test_parse_args_legacy_codex_flags_still_work(tmp_path: Path) -> None:
     audit_prompt = tmp_path / "audit.md"
     audit_schema = tmp_path / "audit.schema.json"
