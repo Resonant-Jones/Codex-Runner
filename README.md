@@ -34,6 +34,68 @@ The intended workflow is:
 
 Dry-run inspection is the default recommended starting point.
 
+## Pi Loop Manager v0
+
+This repository now includes a bounded Pi Loop Manager v0 for supervised plan-execute-validate receipts.
+
+Dry-run usage:
+
+```bash
+codexrun loop \
+  --task examples/example-loop-task.yaml \
+  --repo-root /path/to/repo \
+  --dry-run
+```
+
+Module entrypoint:
+
+```bash
+python -m codex_runner.loop_manager \
+  --task examples/example-loop-task.yaml \
+  --repo-root /path/to/repo \
+  --dry-run
+```
+
+Run artifacts are written under:
+
+```text
+.pi/runs/<run_id>/
+```
+
+Current v0 posture:
+
+- `--dry-run` is the truthful supported mode.
+- `--execute` is wired through the same bounded provider interface, but the included providers remain non-mutating (`stub`) or handoff-oriented (`manual`).
+- Codexify durable ingestion and Whoosh'd-backed inference stay deferred.
+
+### Receipt Compatibility Report
+
+The Pi Loop Manager also ships a read-only receipt compatibility report. It scans an existing receipt file and reports its version, schema validity, evidence posture, and Codexify ingestion readiness without mutating the file or any durable state.
+
+Human-readable report against the v0 fixture:
+
+```bash
+codexrun loop report --receipt tests/fixtures/loop_receipt_v0.json
+```
+
+Machine-readable JSON report against the v0 fixture:
+
+```bash
+codexrun loop report --receipt tests/fixtures/loop_receipt_v0.json --json
+```
+
+The same report path is available through the module entrypoint:
+
+```bash
+python -m codex_runner.loop_manager report --receipt tests/fixtures/loop_receipt_v1.json --json
+```
+
+Report posture:
+
+- The report is a scanner, not a gate. It never ingests, mutates, approves, dispatches, or merges.
+- `lifecycle_mutation_allowed`, `ingestion_allowed`, `durable_action_allowed`, and `ingestion_performed` are always emitted as `false`.
+- `codexify_ingestion_readiness` is `blocked` for v0 receipts and any v1 envelope that is missing proof fields or reviewer authority; it is `candidate` only for a complete v1 envelope pending governed operator review.
+
 ---
 
 ## Installation
@@ -121,6 +183,16 @@ The deterministic runner rejects `--no-auto-commit` in execute mode to preserve 
 Codex Runner is currently a private-alpha friend-share package.
 
 Interfaces, execution semantics, packaging strategy, and licensing terms may change without notice as the system evolves.
+
+## Context Management
+
+This repo now includes Promptnomicon Steward scaffolding under `.promptnomicon/`:
+
+- `.promptnomicon/promptnomicon-steward.md`
+- `.promptnomicon/promptnomicon-steward-session.md`
+- `.promptnomicon/project-reality-footer.md`
+
+Start a repo-local stewardship pass with `.promptnomicon/promptnomicon-steward-session.md` when you want current-state analysis, bounded next steps, and a receipt-shaped session output.
 
 ---
 
