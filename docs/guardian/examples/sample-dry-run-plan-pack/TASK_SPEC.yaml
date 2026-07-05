@@ -1,0 +1,54 @@
+task_id: "guardian-sample-dry-run-plan-pack-v0"
+title: "Simulated docs-only discoverability review for the Pi Loop receipt report operator runbook"
+repo_root: "/Volumes/Dev_SSD/Codex-Runner"
+mode: dry_run
+intent: |
+  Show how Guardian would prepare a bounded dry-run review of whether the Pi Loop
+  receipt report operator runbook is discoverable from the repository README and
+  Guardian documentation, without executing the loop and without changing runtime
+  behavior, authority, or any cross-repo boundary.
+scope:
+  - "README.md"
+  - "docs/guardian/"
+  - "docs/specs/campaign-runner/PI_LOOP_RECEIPT_REPORT_OPERATOR_RUNBOOK.md"
+non_goals:
+  - "Do not run Codex Runner in this example"
+  - "Do not modify Codexify or Codexify-Core"
+  - "Do not authorize ingestion, lifecycle mutation, provider execution, patching, dispatch, or merge behavior"
+allowed_paths:
+  - "/Volumes/Dev_SSD/Codex-Runner/README.md"
+  - "/Volumes/Dev_SSD/Codex-Runner/docs/guardian/"
+  - "/Volumes/Dev_SSD/Codex-Runner/docs/specs/campaign-runner/PI_LOOP_RECEIPT_REPORT_OPERATOR_RUNBOOK.md"
+  - "/Volumes/Dev_SSD/Codex-Runner/docs/guardian/examples/sample-dry-run-plan-pack/"
+forbidden_paths:
+  - "/Volumes/Dev_SSD/Codexify-main"
+  - "/Volumes/Dev_SSD/ResonantConstructs/Codexify-Core"
+allowed_commands:
+  - "test -f README.md"
+  - "test -f docs/specs/campaign-runner/PI_LOOP_RECEIPT_REPORT_OPERATOR_RUNBOOK.md"
+  - "rg -n \"receipt|report|guardian\" README.md docs/guardian docs/specs/campaign-runner/PI_LOOP_RECEIPT_REPORT_OPERATOR_RUNBOOK.md"
+  - "codexrun loop --task docs/guardian/examples/sample-dry-run-plan-pack/TASK_SPEC.yaml --repo-root /Volumes/Dev_SSD/Codex-Runner --dry-run"
+  - "codexrun loop report --receipt <path> --json"
+forbidden_commands:
+  - "Any command targeting /Volumes/Dev_SSD/Codexify-main"
+  - "Any command targeting /Volumes/Dev_SSD/ResonantConstructs/Codexify-Core"
+  - "codexrun loop --execute"
+  - "Any database migration, API route, UI action, patch application, dispatch, merge, or reviewer auto-fill command"
+validation:
+  - "Docs/example-only review: confirm the plan pack is internally consistent and clearly marked simulated and not executed"
+acceptance_criteria:
+  - "The sample pack clearly states that it is an example and not active authorization"
+  - "The sample pack keeps work inside /Volumes/Dev_SSD/Codex-Runner"
+  - "The sample pack explicitly forbids /Volumes/Dev_SSD/Codexify-main and /Volumes/Dev_SSD/ResonantConstructs/Codexify-Core"
+  - "The sample pack preserves the evidence-versus-authority split and does not imply execution"
+expected_artifacts:
+  - "Filled example files under docs/guardian/examples/sample-dry-run-plan-pack/"
+  - "A human-readable example of a bounded Guardian task spec"
+  - "No receipts, because this example is not executed"
+escalation_triggers:
+  - "A request to treat this sample as active authorization"
+  - "A request to expand into Codexify ingestion or durable-state mutation"
+  - "A request to run execute mode or any provider-backed mutation"
+notes: |
+  Sample scenario only. Not wired into runtime behavior. Candidate does not mean
+  approved. Schema-valid does not mean correct. Authority is not self-promotable.
