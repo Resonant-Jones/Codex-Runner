@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "id",
+    "objective",
+    "repo_root",
+    "max_attempts",
+    "allowed_paths",
+    "forbidden_paths",
+    "acceptance_criteria",
+    "validation_commands",
+    "operator_review_required_for",
+    "context_docs"
+  ],
+  "properties": {
+    "id": { "type": "string" },
+    "objective": { "type": "string" },
+    "repo_root": { "type": ["string", "null"] },
+    "max_attempts": { "type": "integer", "minimum": 1 },
+    "allowed_paths": { "type": "array", "items": { "type": "string" } },
+    "forbidden_paths": { "type": "array", "items": { "type": "string" } },
+    "acceptance_criteria": { "type": "array", "items": { "type": "string" } },
+    "validation_commands": { "type": "array", "items": { "type": "string" } },
+    "operator_review_required_for": { "type": "array", "items": { "type": "string" } },
+    "context_docs": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}
+

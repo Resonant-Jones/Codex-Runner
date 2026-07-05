@@ -1,0 +1,24 @@
+id: example-loop-manager-smoke
+objective: Verify Pi Loop Manager can plan, inspect, validate, and emit receipt for a docs-only task.
+repo_root: .
+max_attempts: 3
+allowed_paths:
+  - docs/handoffs/**
+  - .pi/runs/**
+forbidden_paths:
+  - docs/architecture/adr/accepted/**
+  - docs/architecture/00-current-state.md
+  - docs/design/tokens/**
+acceptance_criteria:
+  - A loop receipt is emitted.
+  - Gate receipts are emitted for every executed gate.
+  - Validation result is captured.
+  - No canonical docs are modified.
+validation_commands:
+  - python3 -c "print('loop example validation ok')"
+operator_review_required_for:
+  - ui_ux_changes
+  - design_token_changes
+  - accepted_adr_changes
+context_docs:
+  - README.md

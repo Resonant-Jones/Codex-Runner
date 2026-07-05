@@ -1,0 +1,31 @@
+{
+  "receipt_path": "tests/fixtures/loop_receipt_v0.json",
+  "schema_valid": true,
+  "mode": "dry_run",
+  "evidence_posture": "attached_evidence",
+  "trust_level": "validation_captured",
+  "actionability": "review_required",
+  "authority_warnings": [],
+  "missing_proof_fields": [
+    "attempt_id",
+    "explicit receipt_ref",
+    "structured validation outputs",
+    "per-criterion acceptance results",
+    "reviewer_decision",
+    "actual changed-file semantics"
+  ],
+  "operator_review_triggers": [
+    "v0 receipt cannot become durable proof without review."
+  ],
+  "lifecycle_mutation_allowed": false,
+  "ingestion_allowed": false,
+  "operator_review_required": true,
+  "codexify_ingestion_readiness": "blocked",
+  "reason": "v0 receipts are admissible as attached evidence but are not Codexify-native durable proof artifacts.",
+  "receipt_version": "v0",
+  "operator_review_required_fields": [
+    "v0 receipt cannot become durable proof without review."
+  ],
+  "durable_action_allowed": false,
+  "ingestion_performed": false
+}

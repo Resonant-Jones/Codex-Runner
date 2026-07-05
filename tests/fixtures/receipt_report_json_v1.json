@@ -1,0 +1,26 @@
+{
+  "receipt_path": "tests/fixtures/loop_receipt_v1.json",
+  "schema_valid": true,
+  "mode": "dry_run",
+  "evidence_posture": "proof_envelope_candidate",
+  "trust_level": "validation_captured",
+  "actionability": "review_required",
+  "authority_warnings": [],
+  "missing_proof_fields": [
+    "work_order_id"
+  ],
+  "operator_review_triggers": [
+    "v1 proof envelope is missing fields required for Codexify ingestion."
+  ],
+  "lifecycle_mutation_allowed": false,
+  "ingestion_allowed": false,
+  "operator_review_required": true,
+  "codexify_ingestion_readiness": "blocked",
+  "reason": "v1 receipt is recognized, but required proof-envelope fields or review authority evidence are incomplete.",
+  "receipt_version": "v1",
+  "operator_review_required_fields": [
+    "v1 proof envelope is missing fields required for Codexify ingestion."
+  ],
+  "durable_action_allowed": false,
+  "ingestion_performed": false
+}
