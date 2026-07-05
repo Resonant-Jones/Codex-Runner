@@ -5,9 +5,11 @@ import json
 from pathlib import Path
 
 from .plan_pack_validator import render_report, validate_plan_pack
+from .receipt import write_receipt
 from .session_log import write_session_log
 
 DEFAULT_SESSIONS_DIR = Path(".guardian/sessions")
+DEFAULT_RECEIPTS_DIR = Path(".guardian/receipts")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,6 +36,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Write a generated session log under .guardian/sessions/",
     )
+    validate_parser.add_argument(
+        "--write-receipt",
+        action="store_true",
+        help="Write a generated validation receipt under .guardian/receipts/",
+    )
     return parser
 
 
@@ -49,6 +56,8 @@ def _format_command(args: argparse.Namespace) -> str:
         parts.append("--json")
     if args.write_session_log:
         parts.append("--write-session-log")
+    if args.write_receipt:
+        parts.append("--write-receipt")
     return " ".join(parts)
 
 
@@ -63,6 +72,12 @@ def main(argv: list[str] | None = None) -> int:
             report,
             command=_format_command(args),
             sessions_dir=DEFAULT_SESSIONS_DIR,
+        )
+    if args.write_receipt:
+        write_receipt(
+            report,
+            command=_format_command(args),
+            receipts_dir=DEFAULT_RECEIPTS_DIR,
         )
     if args.json:
         print(json.dumps(report.to_json_dict(), indent=2))

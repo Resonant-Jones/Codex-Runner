@@ -12,6 +12,7 @@ from codex_runner.guardian.plan_pack_validator import (
     validate_plan_pack,
 )
 from codex_runner.guardian.session_log import write_session_log
+from codex_runner.guardian.receipt import write_receipt
 
 
 def sample_plan_pack_path() -> Path:
@@ -622,3 +623,266 @@ def test_gitignore_contains_guardian_sessions() -> None:
     gitignore = (repo_root / ".gitignore").read_text(encoding="utf-8")
 
     assert ".guardian/sessions/" in gitignore
+
+
+def _read_single_receipt(receipts_dir: Path) -> dict[str, object]:
+    logs = sorted(receipts_dir.glob("*.json"))
+    assert len(logs) == 1, f"expected exactly one receipt, found {len(logs)}"
+    return json.loads(logs[0].read_text(encoding="utf-8"))
+
+
+def test_default_validation_writes_no_receipt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    exit_code = main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(sample_plan_pack_path()),
+        ]
+    )
+
+    assert exit_code == 0
+    assert not (tmp_path / ".guardian").exists()
+
+
+def test_write_receipt_creates_exactly_one_under_receipts_dir(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    exit_code = main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(sample_plan_pack_path()),
+            "--write-receipt",
+        ]
+    )
+    receipts_dir = tmp_path / ".guardian" / "receipts"
+    receipts = sorted(receipts_dir.glob("*.json"))
+
+    assert exit_code == 0
+    assert len(receipts) == 1
+    assert receipts[0].parent.name == "receipts"
+
+
+def test_receipt_type_version_and_validation_result(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(sample_plan_pack_path()),
+            "--write-receipt",
+        ]
+    )
+    receipt = _read_single_receipt(tmp_path / ".guardian" / "receipts")
+
+    assert receipt["receipt_type"] == "guardian_plan_pack_validation"
+    assert receipt["receipt_version"] == "v0"
+    assert receipt["validation"]["valid"] is True
+    assert receipt["validation"]["result"] == "pass"
+    assert receipt["command"].startswith("codexrun guardian validate-plan-pack")
+
+
+def test_receipt_includes_report_fields_from_validator(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(sample_plan_pack_path()),
+            "--write-receipt",
+        ]
+    )
+    receipt = _read_single_receipt(tmp_path / ".guardian" / "receipts")
+    report = receipt["report"]
+
+    assert set(report["required_files"].keys()) == {
+        "README.md",
+        "PLAN.md",
+        "GOALS.md",
+        "BOUNDARIES.md",
+        "AUTHORIZATION.md",
+        "ESCALATION.md",
+        "SESSION_LOG.md",
+        "TASK_SPEC.yaml",
+    }
+    assert all(report["required_files"].values())
+    assert all(report["boundary_checks"].values())
+    assert report["task_spec"]["mode_is_dry_run"] is True
+    assert report["escalation"]["flag_banner_present"] is True
+    assert report["issues"] == []
+
+
+def test_receipt_authority_locks_all_false(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(sample_plan_pack_path()),
+            "--write-receipt",
+        ]
+    )
+    receipt = _read_single_receipt(tmp_path / ".guardian" / "receipts")
+
+    assert set(receipt["authority"].keys()) == set(AUTHORITY_LOCKS.keys())
+    assert all(value is False for value in receipt["authority"].values())
+
+
+def test_receipt_evidence_block_is_not_authority(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(sample_plan_pack_path()),
+            "--write-receipt",
+        ]
+    )
+    receipt = _read_single_receipt(tmp_path / ".guardian" / "receipts")
+    evidence = receipt["evidence"]
+
+    assert evidence["source"] == "guardian_plan_pack_validator"
+    assert evidence["evidence_not_authority"] is True
+    assert evidence["approval_granted"] is False
+    assert evidence["execution_performed"] is False
+    assert evidence["codexify_ingestion_performed"] is False
+    assert evidence["durable_mutation_performed"] is False
+
+
+def test_receipt_does_not_mutate_plan_pack(
+    tmp_path: Path, monkeypatch
+) -> None:
+    plan_pack = copy_plan_pack(tmp_path)
+    before = {
+        path.name: path.read_text(encoding="utf-8") for path in plan_pack.iterdir()
+    }
+    monkeypatch.chdir(tmp_path)
+
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(plan_pack),
+            "--write-receipt",
+        ]
+    )
+    after = {
+        path.name: path.read_text(encoding="utf-8") for path in plan_pack.iterdir()
+    }
+
+    assert before == after
+
+
+def test_json_with_write_receipt_emits_valid_json(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    exit_code = main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(sample_plan_pack_path()),
+            "--json",
+            "--write-receipt",
+        ]
+    )
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["valid"] is True
+    assert (
+        len(list((tmp_path / ".guardian" / "receipts").glob("*.json"))) == 1
+    )
+
+
+def test_write_session_log_and_write_receipt_both_written(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    exit_code = main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(sample_plan_pack_path()),
+            "--write-session-log",
+            "--write-receipt",
+        ]
+    )
+    sessions = sorted((tmp_path / ".guardian" / "sessions").glob("*.json"))
+    receipts = sorted((tmp_path / ".guardian" / "receipts").glob("*.json"))
+
+    assert exit_code == 0
+    assert len(sessions) == 1
+    assert len(receipts) == 1
+
+
+def test_invalid_pack_with_receipt_exits_one_and_writes_failure_receipt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    plan_pack = copy_plan_pack(tmp_path)
+    (plan_pack / "README.md").unlink()
+    monkeypatch.chdir(tmp_path)
+
+    exit_code = main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(plan_pack),
+            "--write-receipt",
+        ]
+    )
+    receipt = _read_single_receipt(tmp_path / ".guardian" / "receipts")
+
+    assert exit_code == 1
+    assert receipt["validation"]["valid"] is False
+    assert receipt["validation"]["result"] == "fail"
+    assert "README.md" in receipt["validation"]["reason"]
+    assert all(value is False for value in receipt["authority"].values())
+    assert receipt["evidence"]["approval_granted"] is False
+
+
+def test_write_receipt_module_writes_to_specified_dir(
+    tmp_path: Path,
+) -> None:
+    report = validate_plan_pack(sample_plan_pack_path())
+    receipts_dir = tmp_path / ".guardian" / "receipts"
+
+    path = write_receipt(
+        report,
+        command="codexrun guardian validate-plan-pack",
+        receipts_dir=receipts_dir,
+    )
+
+    assert path.parent == receipts_dir
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["receipt_type"] == "guardian_plan_pack_validation"
+
+
+def test_gitignore_contains_guardian_receipts() -> None:
+    repo_root = Path(__file__).resolve().parent.parent
+    gitignore = (repo_root / ".gitignore").read_text(encoding="utf-8")
+
+    assert ".guardian/receipts/" in gitignore

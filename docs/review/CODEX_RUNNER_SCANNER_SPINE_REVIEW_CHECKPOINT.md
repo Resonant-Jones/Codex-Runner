@@ -24,12 +24,12 @@ Pi Loop diagnostic spine
 Guardian validation spine
   operating contract -> plan pack templates -> sample plan pack
   -> plan pack validator CLI -> JSON output -> snapshot fixtures
-  -> operator runbook -> docs index -> session-log stub
+  -> operator runbook -> docs index -> session-log stub -> validation receipts
 ```
 
 Both spines are **scanners**. Neither spine is a **gate**. Neither spine grants durable authority. The creature has eyes, but still no claws.
 
-The two authority lock blocks (Pi Loop receipt report; Guardian validator JSON) are hardcoded `false` and frozen by snapshot fixtures. The Guardian session-log stub reuses the validator authority locks and keeps them all `false`; its output is opt-in (`--write-session-log`) and generated under a git-ignored path.
+The two authority lock blocks (Pi Loop receipt report; Guardian validator JSON) are hardcoded `false` and frozen by snapshot fixtures. The Guardian session-log stub and validation receipt both reuse the validator authority locks and keep them all `false`; their output is opt-in (`--write-session-log`, `--write-receipt`) and generated under git-ignored paths.
 
 ---
 
@@ -152,11 +152,11 @@ README.md   (Pi Loop Manager v0 + Receipt Compatibility Report sections)
 
 ## 5. Guardian Validation Spine Artifacts
 
-### Implementation (`src/codex_runner/guardian/`, 4 modules)
+### Implementation (`src/codex_runner/guardian/`, 5 modules)
 
 ```txt
 __init__.py              plan_pack_validator.py      runner.py
-session_log.py
+session_log.py           receipt.py
 ```
 
 ### Session-log generated output
@@ -168,6 +168,16 @@ session_log.py
 ```
 
 Default validation writes nothing. Session logs are generated evidence artifacts, not source authority; `.guardian/sessions/` is git-ignored. The `authority` block in every session log reuses `AUTHORITY_LOCKS` and keeps all nine locks `false`.
+
+### Validation receipt generated output
+
+`--write-receipt` (opt-in) writes one generated v0 validation receipt — a stronger, referenceable evidence artifact — under:
+
+```txt
+.guardian/receipts/<timestamp>-plan-pack-validation-<slug>.json
+```
+
+The receipt includes `receipt_type`, `receipt_version: v0`, the validation result, a `report` block serialized from the same validator result, the nine authority locks (all `false`), an `evidence` block pinning `evidence_not_authority/approval_granted/execution_performed/codexify_ingestion_performed/durable_mutation_performed` all `false`, and a conservative plan-pack manifest (file presence only, no hashes). `.guardian/receipts/` is git-ignored. A receipt does not replace a session log; the two flags compose.
 
 ### Docs (`docs/guardian/`)
 
@@ -182,7 +192,7 @@ examples/sample-dry-run-plan-pack/                (valid golden plan pack, 8 fil
 ### Tests
 
 ```txt
-tests/test_guardian_plan_pack_validator.py   (32 tests: validator + JSON snapshots + 9 session-log tests)
+tests/test_guardian_plan_pack_validator.py   (44 tests: validator + JSON snapshots + session-log + validation-receipt tests)
 ```
 
 ### Fixtures (`tests/fixtures/`)
@@ -208,10 +218,10 @@ All validation run from `/Volumes/Dev_SSD/Codex-Runner`. All green.
 | Command | Result |
 | --- | --- |
 | `pytest -q tests/test_loop_receipt_report.py` | **13 passed** |
-| `pytest -q tests/test_guardian_plan_pack_validator.py` | **32 passed** |
-| `pytest -q tests/test_loop_contracts.py tests/test_loop_runner.py tests/test_loop_receipt_report.py tests/test_guardian_plan_pack_validator.py` | **55 passed** |
+| `pytest -q tests/test_guardian_plan_pack_validator.py` | **44 passed** |
+| `pytest -q tests/test_loop_contracts.py tests/test_loop_runner.py tests/test_loop_receipt_report.py tests/test_guardian_plan_pack_validator.py` | **67 passed** |
 | `python3 -m compileall src/codex_runner/loop_manager src/codex_runner/guardian src/codex_runner/runner.py tests/test_loop_receipt_report.py tests/test_guardian_plan_pack_validator.py` | **clean (exit 0)** |
-| `pytest -q` (full suite) | **92 passed, 1 skipped** |
+| `pytest -q` (full suite) | **104 passed, 1 skipped** |
 
 The single skip is `tests/test_tui_palette.py` — `could not import 'textual'`. It is **unrelated** to either scanner spine (it is a TUI-extra test; `textual` is an optional dependency behind the `[tui]` extra). It does not affect any scanner-spine conclusion.
 
@@ -408,7 +418,6 @@ A clean logical grouping for review/PR purposes. **No commits are made by this c
 Each item below requires an **explicit future task packet**. None is opened by this checkpoint.
 
 ```txt
-Plan-pack validation receipt              (a receipt emitted by the validator itself)
 Goal-to-WorkOrder compiler                (turns plan goals into bounded task specs)
 Guardian-operated dry-run orchestration   (Guardian actually runs codexrun loop; first operational step, needs Chris approval)
 Codexify adoption packet                  (Codexify-side, in Codexify-main)
@@ -416,6 +425,7 @@ Codexify ingestion design                 (Level-3 Chris authority)
 WorkOrder lifecycle mutation              (Level-3 Chris authority)
 provider execution                        (real mutating providers)
 dispatch / merge automation               (Level-3 Chris authority)
+manifest hashing for validation receipts  (SHA-256 of required plan-pack files; deferred from the receipt slice)
 ```
 
 Operational widening (plan execution, Pi Loop invocation from Guardian, Codexify touch, durable mutation) is **never** smuggled into a docs/review slice.
@@ -424,15 +434,14 @@ Operational widening (plan execution, Pi Loop invocation from Guardian, Codexify
 
 ## 12. Recommended Next Slice
 
-The Guardian session-log stub is now complete (delivered in the slice this refresh summarizes). The smallest safe next slice, still inside the scanner boundary:
+The Guardian validation receipt is now complete (delivered in the slice this refresh summarizes). The scanner ecosystem is mature: two read-only spines, machine-readable JSON, snapshot fixtures, session logs, validation receipts, runbooks, indexes, generated-artifact hygiene, and this checkpoint.
 
-```txt
-Add Guardian plan-pack validation receipt
-```
+Two honest options for the next slice:
 
-Scope (future task, not this refresh): a non-mutating receipt emitted by the validator itself when a plan pack passes — a stronger, referenceable evidence artifact than a session log, but still evidence, not approval. It would not execute the plan, invoke Pi Loop, touch Codexify, or mutate durable state.
+1. **Open draft PR for the `guardian-validation-receipt` branch** — get human review of the receipt layer before any operational step. (Recommended.)
+2. **Add Guardian manifest hashing** — SHA-256 of required plan-pack files inside the receipt's manifest (currently presence-only). Stays inside the scanner boundary; no authority change.
 
-The first *operational* slice — Guardian-operated dry-run orchestration (Guardian actually running `codexrun loop` from a validated plan pack) — is larger and requires explicit Chris approval and a new contract slice. It is **not** the recommended next slice here; it is the first slice that crosses from "scanner" into "agent that drives the runner."
+The first *operational* slice — Guardian-operated dry-run orchestration (Guardian actually running `codexrun loop` from a validated plan pack) — is larger and requires explicit Chris approval and a new contract slice. It crosses from "scanner" into "agent that drives the runner."
 
 Any operational widening requires explicit Chris approval.
 
