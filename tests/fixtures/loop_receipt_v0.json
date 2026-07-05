@@ -1,0 +1,40 @@
+{
+  "receipt_version": "v0",
+  "task_id": "fixture-loop-v0",
+  "run_id": "pi-loop-fixture-v0",
+  "status": "passed",
+  "stop_reason": "goal_satisfied",
+  "attempts": [
+    {
+      "work_order_id": null,
+      "task_id": "fixture-loop-v0",
+      "run_id": "pi-loop-fixture-v0",
+      "attempt": 1,
+      "gate_id": "runtime_validator",
+      "status": "passed",
+      "summary": "All validation commands passed.",
+      "evidence_refs": [
+        ".pi/runs/pi-loop-fixture-v0/attempt-1/validation.log"
+      ],
+      "changed_paths": [
+        "docs/handoffs/run.md"
+      ],
+      "adr_impact": "none",
+      "documentation_impact": "handoff_only",
+      "next_gate": "receipt_writer",
+      "stop_reason": null
+    }
+  ],
+  "final_summary": "Fixture v0 receipt for compatibility validation.",
+  "validation_summary": "All validation commands passed.",
+  "changed_paths": [
+    "docs/handoffs/run.md"
+  ],
+  "evidence_refs": [
+    ".pi/runs/pi-loop-fixture-v0/receipt.json",
+    ".pi/runs/pi-loop-fixture-v0/handoff.md"
+  ],
+  "operator_review_required": false,
+  "follow_up_recommendations": []
+}
+

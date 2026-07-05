@@ -1,0 +1,31 @@
+task_id: "<task-id>"
+title: "<short human-readable title>"
+repo_root: "/Volumes/Dev_SSD/Codex-Runner"
+mode: dry_run
+intent: |
+  <One-paragraph statement of what this bounded task is for.>
+scope:
+  - "<relative/path/inside/repo>"
+non_goals:
+  - "<explicitly out-of-scope outcome>"
+allowed_paths:
+  - "/Volumes/Dev_SSD/Codex-Runner/<approved-path>"
+forbidden_paths:
+  - "/Volumes/Dev_SSD/Codexify-main"
+  - "/Volumes/Dev_SSD/ResonantConstructs/Codexify-Core"
+allowed_commands:
+  - "codexrun loop --task <task.yaml> --repo-root /Volumes/Dev_SSD/Codex-Runner --dry-run"
+  - "codexrun loop report --receipt <path> --json"
+forbidden_commands:
+  - "<command touching Codexify or Codexify-Core>"
+validation:
+  - "<validation command or explicit docs-only note>"
+acceptance_criteria:
+  - "<verifiable acceptance criterion>"
+expected_artifacts:
+  - "<receipt, report, diff, or note expected from this task>"
+escalation_triggers:
+  - "<real trigger that requires Chris>"
+notes: |
+  <Template only. Keep this file bounded. Candidate does not mean approved.
+  Schema-valid does not mean correct. Authority is not self-promotable.>

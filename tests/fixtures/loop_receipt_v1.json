@@ -1,0 +1,81 @@
+{
+  "receipt_version": "v1",
+  "schema_version": "pi_loop_receipt.v1alpha",
+  "receipt_kind": "pi_loop_receipt",
+  "identity": {
+    "receipt_id": "receipt-v1-fixture",
+    "task_id": "fixture-loop-v1",
+    "work_order_id": null,
+    "attempt_id": "attempt-v1-fixture",
+    "run_id": "pi-loop-fixture-v1",
+    "source_repo": "Resonant-Jones/Campaign-Runner",
+    "source_ref": "refs/heads/main"
+  },
+  "mode_trust_actionability": {
+    "receipt_mode": "dry_run",
+    "trust_level": "validation_captured",
+    "actionability": "observe_only"
+  },
+  "validation": {
+    "commands": [
+      {
+        "command": "python3 -c \"print('validated')\"",
+        "exit_code": 0,
+        "stdout_ref": ".pi/runs/pi-loop-fixture-v1/attempt-1/stdout.log",
+        "stderr_ref": ".pi/runs/pi-loop-fixture-v1/attempt-1/stderr.log",
+        "artifact_ref": ".pi/runs/pi-loop-fixture-v1/attempt-1/validation.log",
+        "declared_by": "task_spec"
+      }
+    ]
+  },
+  "acceptance": {
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "text": "A loop receipt is emitted.",
+        "status": "passed",
+        "evidence_refs": [
+          ".pi/runs/pi-loop-fixture-v1/receipt.json"
+        ]
+      }
+    ]
+  },
+  "changes": {
+    "changed_paths": [
+      {
+        "path": "docs/handoffs/run.md",
+        "change_kind": "proposed",
+        "evidence_ref": ".pi/runs/pi-loop-fixture-v1/attempt-1/changed-paths.json"
+      }
+    ]
+  },
+  "review": {
+    "operator_review_required": false,
+    "review_reasons": [],
+    "reviewer_decision": null,
+    "reviewer": null,
+    "reviewed_at": null,
+    "rationale": null
+  },
+  "lineage": {
+    "source_thread_id": null,
+    "source_message_id": null,
+    "command_run_id": null,
+    "guardian_run_id": null
+  },
+  "artifacts": {
+    "receipt_ref": ".pi/runs/pi-loop-fixture-v1/receipt.json",
+    "gate_receipts_ref": ".pi/runs/pi-loop-fixture-v1/attempt-1/gate-receipts.json",
+    "handoff_ref": ".pi/runs/pi-loop-fixture-v1/handoff.md",
+    "validation_refs": [
+      ".pi/runs/pi-loop-fixture-v1/attempt-1/validation.log"
+    ],
+    "plan_ref": ".pi/runs/pi-loop-fixture-v1/plan.md"
+  },
+  "policy": {
+    "documentation_impact": "handoff_only",
+    "adr_impact": "none",
+    "operator_review_stop": false,
+    "stop_reason": "goal_satisfied"
+  }
+}

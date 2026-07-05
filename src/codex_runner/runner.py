@@ -2015,6 +2015,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def launch_tui(initial_args: list[str] | None = None) -> list[str] | None:
     try:
         from .tui_app import launch_tui as _launch_tui
+        return _launch_tui(initial_args or [])
     except ImportError as exc:
         message = str(exc).lower()
         if "textual" in message:
@@ -2023,7 +2024,6 @@ def launch_tui(initial_args: list[str] | None = None) -> list[str] | None:
                 "to use interactive mode. Example: `pip install .[tui]`"
             ) from exc
         raise
-    return _launch_tui(initial_args or [])
 
 
 def is_interactive_terminal() -> bool:
@@ -2061,6 +2061,14 @@ def main(argv: list[str] | None = None) -> int:
     resolved_argv = resolve_entry_argv(argv)
     if resolved_argv is None:
         return 0
+    if resolved_argv and resolved_argv[0] == "loop":
+        from .loop_manager.runner import main as loop_main
+
+        return loop_main(resolved_argv[1:])
+    if resolved_argv and resolved_argv[0] == "guardian":
+        from .guardian.runner import main as guardian_main
+
+        return guardian_main(resolved_argv[1:])
 
     args = parse_args(resolved_argv)
 

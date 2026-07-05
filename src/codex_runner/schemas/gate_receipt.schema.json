@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "work_order_id",
+    "task_id",
+    "run_id",
+    "attempt",
+    "gate_id",
+    "status",
+    "summary",
+    "evidence_refs",
+    "changed_paths",
+    "adr_impact",
+    "documentation_impact",
+    "next_gate",
+    "stop_reason"
+  ],
+  "properties": {
+    "work_order_id": { "type": ["string", "null"] },
+    "task_id": { "type": "string" },
+    "run_id": { "type": "string" },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "gate_id": { "type": "string" },
+    "status": { "type": "string" },
+    "summary": { "type": "string" },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "changed_paths": { "type": "array", "items": { "type": "string" } },
+    "adr_impact": { "type": "string" },
+    "documentation_impact": { "type": "string" },
+    "next_gate": { "type": ["string", "null"] },
+    "stop_reason": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false
+}
+

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "receipt_version",
+    "schema_version",
+    "receipt_kind",
+    "identity",
+    "mode_trust_actionability",
+    "validation",
+    "acceptance",
+    "changes",
+    "review",
+    "lineage",
+    "artifacts",
+    "policy"
+  ],
+  "properties": {
+    "receipt_version": { "type": "string", "const": "v1" },
+    "schema_version": { "type": "string" },
+    "receipt_kind": { "type": "string", "const": "pi_loop_receipt" },
+    "identity": { "type": "object" },
+    "mode_trust_actionability": { "type": "object" },
+    "validation": { "type": "object" },
+    "acceptance": { "type": "object" },
+    "changes": { "type": "object" },
+    "review": { "type": "object" },
+    "lineage": { "type": "object" },
+    "artifacts": { "type": "object" },
+    "policy": { "type": "object" }
+  },
+  "additionalProperties": false
+}
+

@@ -1,0 +1,56 @@
+{
+  "plan_pack_path": "plan-pack",
+  "valid": false,
+  "result": "fail",
+  "required_files": {
+    "README.md": true,
+    "PLAN.md": true,
+    "GOALS.md": true,
+    "BOUNDARIES.md": true,
+    "AUTHORIZATION.md": true,
+    "ESCALATION.md": true,
+    "SESSION_LOG.md": true,
+    "TASK_SPEC.yaml": true
+  },
+  "forbidden_path_checks": {
+    "/Volumes/Dev_SSD/Codexify-main": true,
+    "/Volumes/Dev_SSD/ResonantConstructs/Codexify-Core": true
+  },
+  "boundary_checks": {
+    "authority is not self-promotable": true,
+    "no Codexify ingestion authorization": true,
+    "no durable mutation authorization": true,
+    "no provider execution authorization": true,
+    "no patch application authorization": true,
+    "no dispatch authorization": true,
+    "no merge automation authorization": true,
+    "no automatic reviewer decisions authorization": true,
+    "no trust-level auto-promotion authorization": true
+  },
+  "task_spec": {
+    "yaml_parses": true,
+    "mode_is_dry_run": true,
+    "required_fields_present": true
+  },
+  "escalation": {
+    "flag_banner_present": false
+  },
+  "issues": [
+    {
+      "section": "Escalation",
+      "message": "Missing required escalation FLAG### banner"
+    }
+  ],
+  "reason": "Missing required escalation FLAG### banner",
+  "authority": {
+    "guardian_operational": false,
+    "plan_execution_allowed": false,
+    "pi_loop_invocation_allowed": false,
+    "codexify_ingestion_allowed": false,
+    "durable_mutation_allowed": false,
+    "provider_execution_allowed": false,
+    "patch_application_allowed": false,
+    "dispatch_allowed": false,
+    "merge_allowed": false
+  }
+}
