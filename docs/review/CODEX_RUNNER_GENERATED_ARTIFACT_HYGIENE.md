@@ -26,6 +26,8 @@ The governing rule:
 | Path | Classification | Ignored? | Rationale |
 | --- | --- | --- | --- |
 | `.pi/` | `generated_runtime_output` | **yes** (added to `.gitignore`) | Written by `codexrun loop` to `<repo_root>/.pi/runs/<run_id>/`. Contains per-run `receipt.json`, `gate-receipts.json`, `validation.log`, `handoff.md`, `plan.md`, and copied `task.yaml`. Ephemeral dry-run evidence. |
+| `.guardian/sessions/` | `generated_runtime_output` | **yes** (added to `.gitignore`) | Written by `codexrun guardian validate-plan-pack --write-session-log`. Per-validation session logs. Ephemeral evidence. |
+| `.guardian/receipts/` | `generated_runtime_output` | **yes** (added to `.gitignore`) | Written by `codexrun guardian validate-plan-pack --write-receipt`. Per-validation v0 receipts — referenceable evidence, not approval. Ephemeral. |
 | `.promptnomicon/` | `developer_local_scaffold` (authored; README-advertised) | **no** | Three authored `.md` steward files. `README.md` advertises them as a shipped feature (lines 189-195). Not generated. Ignoring would hide authored content. |
 
 ### `.pi/` — generated runtime output
@@ -89,6 +91,7 @@ Any future runtime or session-artifact writer (e.g. a Guardian session-log stub)
 ```txt
 .pi/runs/*                          Pi Loop dry-run evidence
 .guardian/sessions/* (future)       Guardian session logs, if/when added
+.guardian/receipts/*                Guardian validation receipts (--write-receipt)
 any receipt.json / gate-receipts.json emitted at runtime
 any validation.log, handoff.md, plan.md emitted at runtime
 any copied task.yaml placed into a run dir

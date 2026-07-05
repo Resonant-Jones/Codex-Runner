@@ -41,6 +41,11 @@ Thumbs.db
 # Session logs are generated evidence, not source.
 .guardian/sessions/
 
+# Guardian local generated validation receipts
+# Written by `codexrun guardian validate-plan-pack --write-receipt`.
+# Receipts are generated evidence, not source authority.
+.guardian/receipts/
+
 # Environment and secrets
 .env
 .env.*

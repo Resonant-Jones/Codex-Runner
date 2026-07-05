@@ -118,6 +118,35 @@ Session-log rules:
 
 Without `--write-session-log`, the validator remains strictly read-only and writes no files.
 
+### 3.6 Validation receipts (`--write-receipt`)
+
+`--write-receipt` writes a stronger, referenceable evidence artifact than a session log:
+
+```bash
+codexrun guardian validate-plan-pack --path docs/guardian/examples/sample-dry-run-plan-pack/ --write-receipt
+codexrun guardian validate-plan-pack --path docs/guardian/examples/sample-dry-run-plan-pack/ --json --write-receipt
+codexrun guardian validate-plan-pack --path docs/guardian/examples/sample-dry-run-plan-pack/ --write-session-log --write-receipt
+```
+
+The receipt is written under a generated, git-ignored path:
+
+```txt
+.guardian/receipts/<timestamp>-plan-pack-validation-<slug>.json
+```
+
+Receipt rules:
+
+- A validation receipt records that a plan-pack validation scan happened. It is evidence, **not** approval, **not** durable truth, **not** Codexify ingestion.
+- A validation receipt does not make Guardian operational, authorize Pi Loop invocation, authorize Codexify ingestion, or mutate durable state.
+- The `evidence` block pins `evidence_not_authority: true`, `approval_granted: false`, `execution_performed: false`, `codexify_ingestion_performed: false`, `durable_mutation_performed: false`.
+- The `authority` block reuses the validator's nine authority locks and keeps them all `false`.
+- The `report` block serializes from the same validator result used by text/JSON output (no duplicated validation logic).
+- Validation receipts are **generated output**, ignored by git (`.guardian/receipts/` is in `.gitignore`). They are evidence artifacts, not source authority.
+- Validation receipts **do not replace** session logs. `--write-session-log` and `--write-receipt` compose and write one of each.
+- A failed validation still writes a receipt recording the failure (`valid: false`), and the exit code is unchanged: `0` on pass, `1` on fail.
+
+Without `--write-receipt`, the validator writes no receipt. (Default validation remains strictly read-only unless `--write-session-log` or `--write-receipt` is passed.)
+
 ---
 
 ## 4. How to read human-readable output

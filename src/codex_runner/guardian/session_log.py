@@ -12,11 +12,11 @@ SESSION_SCHEMA_VERSION = "v0"
 SESSION_TYPE = "guardian_plan_pack_validation"
 
 
-def _timestamp_utc() -> str:
+def timestamp_utc() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def _safe_slug(text: str) -> str:
+def safe_slug(text: str) -> str:
     slug = re.sub(r"[^A-Za-z0-9]+", "-", text.strip().lower()).strip("-")
     return slug or "session"
 
@@ -51,11 +51,11 @@ def write_session_log(
     sessions_dir: Path,
     notes: str = "",
 ) -> Path:
-    created_at = _timestamp_utc()
+    created_at = timestamp_utc()
     payload = build_session_log_payload(
         report, command=command, created_at=created_at, notes=notes
     )
-    slug = _safe_slug(report.plan_pack_path.name)
+    slug = safe_slug(report.plan_pack_path.name)
     filename = f"{created_at}-validate-plan-pack-{slug}.json"
     sessions_dir.mkdir(parents=True, exist_ok=True)
     path = sessions_dir / filename
