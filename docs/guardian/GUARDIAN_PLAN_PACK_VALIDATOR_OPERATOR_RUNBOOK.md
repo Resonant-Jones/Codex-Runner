@@ -168,6 +168,14 @@ The orchestration record (only with `--write-orchestration-log`) is written unde
 .guardian/orchestrations/<timestamp>-guardian-operated-dry-run-<slug>.json
 ```
 
+`--write-orchestration-receipt` (optional, composes with `--json` and `--write-orchestration-log`) writes a stronger, referenceable orchestration receipt under a separate git-ignored path:
+
+```txt
+.guardian/orchestration-receipts/<timestamp>-guardian-operated-dry-run-receipt-<slug>.json
+```
+
+The orchestration receipt (`receipt_type: guardian_dry_run_orchestration`, `receipt_version: v0`) wraps the preflight result and adds `inputs.validation_receipt` (SHA-256 + `size_bytes` of the validation receipt file itself) and `inputs.plan_pack_manifest` (the preflight's hash verification). It records that a preflight occurred. It is **not** approval, **not** dispatch, **not** Pi Loop invocation authority, **not** execution proof, and **not** Codexify ingestion. A validation-receipt hash proves receipt file continuity, not correctness. Guardian may prepare a record; Guardian may not execute the dry run.
+
 Preflight rules:
 
 - `orchestrate-dry-run` verifies Plan Pack validation receipt continuity (type/version, `validation.valid`, all authority locks false, all evidence flags non-authoritative, manifest `hash_algorithm: sha256`, and that each required file's current SHA-256 still matches the receipt). It does not execute the plan.

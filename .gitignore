@@ -51,6 +51,11 @@ Thumbs.db
 # Orchestration records are generated evidence, not execution.
 .guardian/orchestrations/
 
+# Guardian local generated dry-run orchestration receipts
+# Written by `codexrun guardian orchestrate-dry-run --write-orchestration-receipt`.
+# Orchestration receipts are generated evidence, not approval or dispatch.
+.guardian/orchestration-receipts/
+
 # Environment and secrets
 .env
 .env.*

@@ -46,8 +46,9 @@ src/codex_runner/guardian/runner.py                                    <- guardi
 src/codex_runner/guardian/session_log.py                               <- session-log writer
 src/codex_runner/guardian/receipt.py                                   <- validation-receipt writer (SHA-256 manifest)
 src/codex_runner/guardian/orchestration.py                             <- dry-run orchestration preflight (preparation-only)
+src/codex_runner/guardian/orchestration_receipt.py                     <- dry-run orchestration receipt writer
 tests/test_guardian_plan_pack_validator.py                             <- validator tests (50)
-tests/test_guardian_orchestration.py                                   <- orchestration preflight tests (22)
+tests/test_guardian_orchestration.py                                   <- orchestration preflight + receipt tests (34)
 tests/fixtures/guardian_plan_pack_validator_json_valid.json            <- frozen valid JSON snapshot
 tests/fixtures/guardian_plan_pack_validator_json_invalid.json          <- frozen invalid JSON snapshot
 ```

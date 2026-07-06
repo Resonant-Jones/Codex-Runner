@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -406,3 +407,253 @@ def test_evidence_says_no_execution_no_piloop_no_codexify_no_mutation(
 def test_gitignore_contains_guardian_orchestrations() -> None:
     gitignore = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
     assert ".guardian/orchestrations/" in gitignore
+
+
+def _read_single_orchestration_receipt(receipts_dir: Path) -> dict:
+    logs = sorted(receipts_dir.glob("*.json"))
+    assert len(logs) == 1, (
+        f"expected exactly one orchestration receipt, found {len(logs)}"
+    )
+    return json.loads(logs[0].read_text(encoding="utf-8"))
+
+
+def _run_and_read_orch_receipt(
+    plan_pack: Path,
+    receipt: Path,
+    repo_local_tmp: Path,
+    monkeypatch,
+    extra: list[str] | None = None,
+) -> dict:
+    args = ["--write-orchestration-receipt"]
+    if extra:
+        args.extend(extra)
+    _run(
+        plan_pack,
+        receipt,
+        extra=args,
+        monkeypatch=monkeypatch,
+        cwd=repo_local_tmp,
+    )
+    return _read_single_orchestration_receipt(
+        repo_local_tmp / ".guardian" / "orchestration-receipts"
+    )
+
+
+def test_default_writes_no_orchestration_receipt(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    _run(plan_pack, receipt, monkeypatch=monkeypatch, cwd=repo_local_tmp)
+
+    assert not (repo_local_tmp / ".guardian" / "orchestration-receipts").exists()
+
+
+def test_write_orchestration_receipt_writes_one_under_correct_dir(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    orch_receipt = _run_and_read_orch_receipt(
+        plan_pack, receipt, repo_local_tmp, monkeypatch
+    )
+    receipts_dir = repo_local_tmp / ".guardian" / "orchestration-receipts"
+    files = sorted(receipts_dir.glob("*.json"))
+
+    assert len(files) == 1
+    assert files[0].parent.name == "orchestration-receipts"
+    assert files[0].name.endswith(".json")
+    assert orch_receipt["receipt_type"] == "guardian_dry_run_orchestration"
+
+
+def test_orchestration_receipt_type_version_and_orchestration_type(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    orch_receipt = _run_and_read_orch_receipt(
+        plan_pack, receipt, repo_local_tmp, monkeypatch
+    )
+
+    assert orch_receipt["receipt_type"] == "guardian_dry_run_orchestration"
+    assert orch_receipt["receipt_version"] == "v0"
+    assert orch_receipt["orchestration_type"] == "guardian_operated_dry_run"
+    assert orch_receipt["orchestration_version"] == "v0"
+
+
+def test_orchestration_receipt_includes_preflight_result_data(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    _, result_payload = _run_json(plan_pack, receipt, capsys)
+    orch_receipt = _run_and_read_orch_receipt(
+        plan_pack, receipt, repo_local_tmp, monkeypatch
+    )
+
+    assert orch_receipt["result"] == result_payload["result"]
+    assert orch_receipt["reason"] == result_payload["reason"]
+    assert orch_receipt["preconditions"] == result_payload["preconditions"]
+    assert (
+        orch_receipt["receipt_hash_verification"]
+        == result_payload["receipt_hash_verification"]
+    )
+    assert orch_receipt["plan_pack_path"] == result_payload["plan_pack_path"]
+
+
+def test_orchestration_receipt_authority_and_evidence_locks(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    orch_receipt = _run_and_read_orch_receipt(
+        plan_pack, receipt, repo_local_tmp, monkeypatch
+    )
+    authority = orch_receipt["authority"]
+    evidence = orch_receipt["evidence"]
+
+    assert all(value is False for value in authority.values())
+    assert evidence["orchestration_receipt_only"] is True
+    assert evidence["execution_performed"] is False
+    assert evidence["pi_loop_invoked"] is False
+    assert evidence["codexify_ingestion_performed"] is False
+    assert evidence["durable_mutation_performed"] is False
+    assert evidence["source_mutation_performed"] is False
+    assert evidence["approval_granted"] is False
+    assert evidence["dispatch_performed"] is False
+    assert evidence["merge_performed"] is False
+
+
+def test_orchestration_receipt_validation_receipt_hash_matches_hashlib(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    orch_receipt = _run_and_read_orch_receipt(
+        plan_pack, receipt, repo_local_tmp, monkeypatch
+    )
+    vr = orch_receipt["inputs"]["validation_receipt"]
+    expected = hashlib.sha256(receipt.read_bytes()).hexdigest()
+
+    assert vr["path"] == str(receipt.resolve())
+    assert vr["sha256"] == expected
+    assert vr["size_bytes"] == len(receipt.read_bytes())
+
+
+def test_orchestration_receipt_plan_pack_manifest_reuses_preflight(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    orch_receipt = _run_and_read_orch_receipt(
+        plan_pack, receipt, repo_local_tmp, monkeypatch
+    )
+
+    manifest = orch_receipt["inputs"]["plan_pack_manifest"]
+    assert manifest == orch_receipt["receipt_hash_verification"]
+    assert manifest["hash_algorithm"] == "sha256"
+    readme = manifest["files"]["README.md"]
+    assert readme["matches"] is True
+    assert isinstance(readme["actual_sha256"], str)
+
+
+def test_json_with_write_orchestration_receipt_emits_valid_json_only(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    exit_code = _run(
+        plan_pack,
+        receipt,
+        extra=["--json", "--write-orchestration-receipt"],
+        monkeypatch=monkeypatch,
+        cwd=repo_local_tmp,
+    )
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["result"] == "pass"
+    assert (
+        len(
+            list(
+                (repo_local_tmp / ".guardian" / "orchestration-receipts").glob(
+                    "*.json"
+                )
+            )
+        )
+        == 1
+    )
+
+
+def test_log_and_orchestration_receipt_both_written(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    orch_receipt = _run_and_read_orch_receipt(
+        plan_pack,
+        receipt,
+        repo_local_tmp,
+        monkeypatch,
+        extra=["--write-orchestration-log"],
+    )
+    logs = list((repo_local_tmp / ".guardian" / "orchestrations").glob("*.json"))
+    receipts = list(
+        (repo_local_tmp / ".guardian" / "orchestration-receipts").glob("*.json")
+    )
+
+    assert len(logs) == 1
+    assert len(receipts) == 1
+    assert orch_receipt["orchestration_log_path"] is not None
+
+
+def test_failure_with_write_orchestration_receipt_writes_failure_receipt(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    (plan_pack / "README.md").write_text("tampered\n", encoding="utf-8")
+    exit_code = _run(
+        plan_pack,
+        receipt,
+        extra=["--write-orchestration-receipt"],
+        monkeypatch=monkeypatch,
+        cwd=repo_local_tmp,
+    )
+    orch_receipt = _read_single_orchestration_receipt(
+        repo_local_tmp / ".guardian" / "orchestration-receipts"
+    )
+
+    assert exit_code == 1
+    assert orch_receipt["result"] == "fail"
+
+
+def test_receipt_writing_does_not_mutate_plan_pack(
+    plan_pack_and_receipt: tuple[Path, Path],
+    repo_local_tmp: Path,
+    monkeypatch,
+) -> None:
+    plan_pack, receipt = plan_pack_and_receipt
+    before = {p.name: p.read_bytes() for p in plan_pack.iterdir()}
+    _run_and_read_orch_receipt(plan_pack, receipt, repo_local_tmp, monkeypatch)
+    after = {p.name: p.read_bytes() for p in plan_pack.iterdir()}
+
+    assert before == after
+
+
+def test_gitignore_contains_orchestration_receipts() -> None:
+    gitignore = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert ".guardian/orchestration-receipts/" in gitignore
