@@ -177,7 +177,7 @@ Default validation writes nothing. Session logs are generated evidence artifacts
 .guardian/receipts/<timestamp>-plan-pack-validation-<slug>.json
 ```
 
-The receipt includes `receipt_type`, `receipt_version: v0`, the validation result, a `report` block serialized from the same validator result, the nine authority locks (all `false`), an `evidence` block pinning `evidence_not_authority/approval_granted/execution_performed/codexify_ingestion_performed/durable_mutation_performed` all `false`, and a conservative plan-pack manifest (file presence only, no hashes). `.guardian/receipts/` is git-ignored. A receipt does not replace a session log; the two flags compose.
+The receipt includes `receipt_type`, `receipt_version: v0`, the validation result, a `report` block serialized from the same validator result, the nine authority locks (all `false`), an `evidence` block pinning `evidence_not_authority/approval_granted/execution_performed/codexify_ingestion_performed/durable_mutation_performed` all `false`, and a `plan_pack_manifest` with SHA-256 hashes + `size_bytes` for each required plan-pack file (present files only; missing files are `null`). `.guardian/receipts/` is git-ignored. A receipt does not replace a session log; the two flags compose.
 
 ### Docs (`docs/guardian/`)
 
@@ -192,7 +192,7 @@ examples/sample-dry-run-plan-pack/                (valid golden plan pack, 8 fil
 ### Tests
 
 ```txt
-tests/test_guardian_plan_pack_validator.py   (44 tests: validator + JSON snapshots + session-log + validation-receipt tests)
+tests/test_guardian_plan_pack_validator.py   (50 tests: validator + JSON snapshots + session-log + validation-receipt + manifest-hash tests)
 ```
 
 ### Fixtures (`tests/fixtures/`)
@@ -218,10 +218,10 @@ All validation run from `/Volumes/Dev_SSD/Codex-Runner`. All green.
 | Command | Result |
 | --- | --- |
 | `pytest -q tests/test_loop_receipt_report.py` | **13 passed** |
-| `pytest -q tests/test_guardian_plan_pack_validator.py` | **44 passed** |
-| `pytest -q tests/test_loop_contracts.py tests/test_loop_runner.py tests/test_loop_receipt_report.py tests/test_guardian_plan_pack_validator.py` | **67 passed** |
+| `pytest -q tests/test_guardian_plan_pack_validator.py` | **50 passed** |
+| `pytest -q tests/test_loop_contracts.py tests/test_loop_runner.py tests/test_loop_receipt_report.py tests/test_guardian_plan_pack_validator.py` | **73 passed** |
 | `python3 -m compileall src/codex_runner/loop_manager src/codex_runner/guardian src/codex_runner/runner.py tests/test_loop_receipt_report.py tests/test_guardian_plan_pack_validator.py` | **clean (exit 0)** |
-| `pytest -q` (full suite) | **104 passed, 1 skipped** |
+| `pytest -q` (full suite) | **110 passed, 1 skipped** |
 
 The single skip is `tests/test_tui_palette.py` — `could not import 'textual'`. It is **unrelated** to either scanner spine (it is a TUI-extra test; `textual` is an optional dependency behind the `[tui]` extra). It does not affect any scanner-spine conclusion.
 
@@ -425,7 +425,6 @@ Codexify ingestion design                 (Level-3 Chris authority)
 WorkOrder lifecycle mutation              (Level-3 Chris authority)
 provider execution                        (real mutating providers)
 dispatch / merge automation               (Level-3 Chris authority)
-manifest hashing for validation receipts  (SHA-256 of required plan-pack files; deferred from the receipt slice)
 ```
 
 Operational widening (plan execution, Pi Loop invocation from Guardian, Codexify touch, durable mutation) is **never** smuggled into a docs/review slice.
@@ -434,16 +433,14 @@ Operational widening (plan execution, Pi Loop invocation from Guardian, Codexify
 
 ## 12. Recommended Next Slice
 
-The Guardian validation receipt is now complete (delivered in the slice this refresh summarizes). The scanner ecosystem is mature: two read-only spines, machine-readable JSON, snapshot fixtures, session logs, validation receipts, runbooks, indexes, generated-artifact hygiene, and this checkpoint.
+The Guardian validation receipt now includes SHA-256 manifest hashes (delivered in the slice this refresh summarizes). The scanner ecosystem is mature: two read-only spines, machine-readable JSON, snapshot fixtures, session logs, hash-strengthened validation receipts, runbooks, indexes, generated-artifact hygiene, and this checkpoint.
 
-Two honest options for the next slice:
+The scanner boundary is now substantially complete. Two honest options for the next slice:
 
-1. **Open draft PR for the `guardian-validation-receipt` branch** — get human review of the receipt layer before any operational step. (Recommended.)
-2. **Add Guardian manifest hashing** — SHA-256 of required plan-pack files inside the receipt's manifest (currently presence-only). Stays inside the scanner boundary; no authority change.
+1. **Open draft PR for the `guardian-receipt-manifest-hashes` branch** — get human review of the manifest-hash layer. The scanner spines are packaged and merged through PR #2 and PR #3; this is a small, reviewable follow-up. (Recommended.)
+2. **Pause scanner work and design the first operational slice** — Guardian-operated dry-run orchestration (Guardian actually running `codexrun loop` from a validated plan pack). This crosses from "scanner" into "agent that drives the runner" and requires explicit Chris approval and a new contract slice. It is **not** a scanner slice.
 
-The first *operational* slice — Guardian-operated dry-run orchestration (Guardian actually running `codexrun loop` from a validated plan pack) — is larger and requires explicit Chris approval and a new contract slice. It crosses from "scanner" into "agent that drives the runner."
-
-Any operational widening requires explicit Chris approval.
+The scanner has eyes and now a fingerprint. It still has no claws. Any operational widening requires explicit Chris approval.
 
 ---
 

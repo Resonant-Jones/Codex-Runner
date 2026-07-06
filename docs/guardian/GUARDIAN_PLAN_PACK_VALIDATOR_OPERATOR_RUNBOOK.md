@@ -141,6 +141,8 @@ Receipt rules:
 - The `evidence` block pins `evidence_not_authority: true`, `approval_granted: false`, `execution_performed: false`, `codexify_ingestion_performed: false`, `durable_mutation_performed: false`.
 - The `authority` block reuses the validator's nine authority locks and keeps them all `false`.
 - The `report` block serializes from the same validator result used by text/JSON output (no duplicated validation logic).
+- The `plan_pack_manifest` block fingerprints the eight required plan-pack files with SHA-256 (`hash_algorithm: sha256`). Each present file records `present: true`, a lowercase-hex `sha256` digest of its bytes exactly as stored, and an integer `size_bytes`. Missing files record `present: false` with `sha256: null` and `size_bytes: null`. Hashes cover **only** the required plan-pack files — never arbitrary repo contents, `.guardian/`, `.pi/`, source, tests, or generated outputs. Symlinks are treated conservatively as not-present.
+- Manifest hashes help compare whether the plan pack changed after validation. They are **evidence integrity metadata, not approval**.
 - Validation receipts are **generated output**, ignored by git (`.guardian/receipts/` is in `.gitignore`). They are evidence artifacts, not source authority.
 - Validation receipts **do not replace** session logs. `--write-session-log` and `--write-receipt` compose and write one of each.
 - A failed validation still writes a receipt recording the failure (`valid: false`), and the exit code is unchanged: `0` on pass, `1` on fail.
