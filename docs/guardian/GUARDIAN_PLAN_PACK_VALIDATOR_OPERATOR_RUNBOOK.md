@@ -149,6 +149,36 @@ Receipt rules:
 
 Without `--write-receipt`, the validator writes no receipt. (Default validation remains strictly read-only unless `--write-session-log` or `--write-receipt` is passed.)
 
+### 3.7 Dry-run orchestration preflight (`orchestrate-dry-run`)
+
+`orchestrate-dry-run` is the first operational stub. It is **preparation-only**: it reads a validated Plan Pack plus a Guardian validation receipt, verifies preconditions and SHA-256 manifest continuity, and may write a local orchestration record. It does **not** invoke Pi Loop, execute the plan, mutate source, touch Codexify, apply patches, dispatch, merge, or promote trust.
+
+```bash
+codexrun guardian orchestrate-dry-run \
+  --plan-pack <plan-pack-dir> --require-receipt <receipt-path>
+codexrun guardian orchestrate-dry-run \
+  --plan-pack <plan-pack-dir> --require-receipt <receipt-path> --json
+codexrun guardian orchestrate-dry-run \
+  --plan-pack <plan-pack-dir> --require-receipt <receipt-path> --write-orchestration-log
+```
+
+The orchestration record (only with `--write-orchestration-log`) is written under a generated, git-ignored path:
+
+```txt
+.guardian/orchestrations/<timestamp>-guardian-operated-dry-run-<slug>.json
+```
+
+Preflight rules:
+
+- `orchestrate-dry-run` verifies Plan Pack validation receipt continuity (type/version, `validation.valid`, all authority locks false, all evidence flags non-authoritative, manifest `hash_algorithm: sha256`, and that each required file's current SHA-256 still matches the receipt). It does not execute the plan.
+- It requires the Plan Pack's `AUTHORIZATION.md` to contain `dry-run orchestration preparation allowed`, and rejects obvious boundary-conflict phrases in `BOUNDARIES.md`.
+- Resolved plan-pack and receipt paths must be inside `/Volumes/Dev_SSD/Codex-Runner` and outside both Codexify repos.
+- Exit codes: `0` when all preconditions pass, `1` when any fail. A failure still writes a failure record with `--write-orchestration-log`.
+- The `authority` block stays all `false` (including `guardian_operational`, `pi_loop_invocation_allowed`); the `evidence` block pins `execution_performed`, `pi_loop_invoked`, `codexify_ingestion_performed`, `durable_mutation_performed`, `source_mutation_performed`, and `approval_granted` all `false`.
+- Orchestration records are generated evidence, not execution, not approval, and not source authority. `.guardian/orchestrations/` is git-ignored.
+
+This stub is governed by `GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md`. It prepares the road; it does not drive.
+
 ---
 
 ## 4. How to read human-readable output

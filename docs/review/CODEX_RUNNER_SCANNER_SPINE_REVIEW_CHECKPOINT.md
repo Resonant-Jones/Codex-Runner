@@ -433,13 +433,17 @@ Operational widening (plan execution, Pi Loop invocation from Guardian, Codexify
 
 ## 12. Recommended Next Slice
 
-The Guardian validation receipt now includes SHA-256 manifest hashes (delivered in PR #4). The scanner ecosystem is mature: two read-only spines, machine-readable JSON, snapshot fixtures, session logs, hash-strengthened validation receipts, runbooks, indexes, generated-artifact hygiene, and this checkpoint.
+The scanner phase is complete, and the **first operational stub is now implemented (preparation-only)**: `codexrun guardian orchestrate-dry-run` reads a validated Plan Pack plus a Guardian validation receipt, verifies all addendum preconditions (type/version, `validation.valid`, authority locks all false, evidence flags non-authoritative, manifest `sha256` + live hash continuity, `AUTHORIZATION.md` consent, no boundary conflict, repo-boundary path checks), and optionally writes a generated orchestration record under git-ignored `.guardian/orchestrations/`. It is governed by `docs/guardian/GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md`.
 
-**The scanner phase is complete.** The next category gate is now documented by `docs/guardian/GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md`, a docs-only treaty that defines the first future operational category — Guardian-operated dry-run orchestration — before any implementation exists. The addendum does **not** implement that category, does **not** claim the operational stub exists, and does **not** claim Guardian can operate. It awaits explicit Chris approval before any orchestration code is built.
+This stub does **not** execute the plan, invoke Pi Loop, mutate source, touch Codexify, or grant any authority. All nine authority locks remain `false`; `guardian_operational` and `pi_loop_invocation_allowed` stay `false`. Guardian prepares the road; it does not drive.
 
-After the addendum is reviewed/approved, the next implementation slice (only on explicit Chris approval) would be the **dry-run orchestration stub**: read a validated Plan Pack, re-verify its receipt hashes, construct a bounded orchestration record under git-ignored `.guardian/orchestrations/`, and stop before execution authority. All authority locks remain `false`; Pi Loop is not invoked; Codexify is not touched.
+The next honest slice options:
 
-The scanner has eyes and a fingerprint. It still has no claws. Any operational widening requires explicit Chris approval, gated by the addendum.
+1. **Open draft PR for `guardian-orchestrate-dry-run-stub`** — get human review of the first operational stub before any further widening. (Recommended.)
+2. **Add `--write-orchestration-receipt`** — a referenceable receipt for orchestration attempts (parallel to the validation receipt), still preparation-only.
+3. **The next genuine authority widening** — allowing Guardian to actually invoke Pi Loop in dry-run mode — is a larger slice that requires explicit Chris approval and a new contract addendum. It is **not** recommended next.
+
+The scanner has eyes and a fingerprint. The first operational stub has a preflight tower. Guardian still has no claws. Any execution authority requires explicit Chris approval.
 
 ---
 
@@ -455,15 +459,16 @@ This checkpoint is pure classification and packaging. No boundary was ambiguous;
 
 ## Bottom Line
 
-Two scanner spines, packaged and legible. The scanner phase is complete.
+Two scanner spines, packaged and legible. The scanner phase is complete, and the first operational stub (dry-run orchestration preflight) is implemented as preparation-only.
 
 ```txt
 Pi Loop diagnostic spine:   receipts -> report -> JSON -> snapshots -> runbook
 Guardian validation spine:  contract -> validator -> JSON -> snapshots -> runbook -> index -> session logs -> receipts (SHA-256)
+Guardian operational stub:  orchestrate-dry-run preflight -> orchestration records (no execution)
 ```
 
-Both are read-only. Both are frozen by snapshots. Neither grants authority. Session logs and validation receipts are opt-in generated evidence under git-ignored paths.
+The scanner spines are read-only and frozen by snapshots. The orchestration stub is preparation-only: it verifies and records; it does not execute. All authority locks remain `false` across every artifact.
 
-The next category — Guardian as operator of a bounded dry-run — is defined by `GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md` but not implemented. The creature has eyes and a fingerprint. It still has no claws.
+The creature has eyes, a fingerprint, and a preflight tower. It still has no claws. Execution authority requires explicit Chris approval, gated by `GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md`.
 
 This checkpoint adds the map. It does not move the territory.
