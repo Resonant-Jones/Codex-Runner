@@ -433,14 +433,13 @@ Operational widening (plan execution, Pi Loop invocation from Guardian, Codexify
 
 ## 12. Recommended Next Slice
 
-The Guardian validation receipt now includes SHA-256 manifest hashes (delivered in the slice this refresh summarizes). The scanner ecosystem is mature: two read-only spines, machine-readable JSON, snapshot fixtures, session logs, hash-strengthened validation receipts, runbooks, indexes, generated-artifact hygiene, and this checkpoint.
+The Guardian validation receipt now includes SHA-256 manifest hashes (delivered in PR #4). The scanner ecosystem is mature: two read-only spines, machine-readable JSON, snapshot fixtures, session logs, hash-strengthened validation receipts, runbooks, indexes, generated-artifact hygiene, and this checkpoint.
 
-The scanner boundary is now substantially complete. Two honest options for the next slice:
+**The scanner phase is complete.** The next category gate is now documented by `docs/guardian/GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md`, a docs-only treaty that defines the first future operational category — Guardian-operated dry-run orchestration — before any implementation exists. The addendum does **not** implement that category, does **not** claim the operational stub exists, and does **not** claim Guardian can operate. It awaits explicit Chris approval before any orchestration code is built.
 
-1. **Open draft PR for the `guardian-receipt-manifest-hashes` branch** — get human review of the manifest-hash layer. The scanner spines are packaged and merged through PR #2 and PR #3; this is a small, reviewable follow-up. (Recommended.)
-2. **Pause scanner work and design the first operational slice** — Guardian-operated dry-run orchestration (Guardian actually running `codexrun loop` from a validated plan pack). This crosses from "scanner" into "agent that drives the runner" and requires explicit Chris approval and a new contract slice. It is **not** a scanner slice.
+After the addendum is reviewed/approved, the next implementation slice (only on explicit Chris approval) would be the **dry-run orchestration stub**: read a validated Plan Pack, re-verify its receipt hashes, construct a bounded orchestration record under git-ignored `.guardian/orchestrations/`, and stop before execution authority. All authority locks remain `false`; Pi Loop is not invoked; Codexify is not touched.
 
-The scanner has eyes and now a fingerprint. It still has no claws. Any operational widening requires explicit Chris approval.
+The scanner has eyes and a fingerprint. It still has no claws. Any operational widening requires explicit Chris approval, gated by the addendum.
 
 ---
 
@@ -456,15 +455,15 @@ This checkpoint is pure classification and packaging. No boundary was ambiguous;
 
 ## Bottom Line
 
-Two scanner spines, packaged and legible.
+Two scanner spines, packaged and legible. The scanner phase is complete.
 
 ```txt
 Pi Loop diagnostic spine:   receipts -> report -> JSON -> snapshots -> runbook
-Guardian validation spine:  contract -> validator -> JSON -> snapshots -> runbook -> index -> session logs
+Guardian validation spine:  contract -> validator -> JSON -> snapshots -> runbook -> index -> session logs -> receipts (SHA-256)
 ```
 
-Both are read-only. Both are frozen by snapshots. Neither grants authority. Session logs are opt-in generated evidence under a git-ignored path.
+Both are read-only. Both are frozen by snapshots. Neither grants authority. Session logs and validation receipts are opt-in generated evidence under git-ignored paths.
 
-The creature has eyes. It still has no claws.
+The next category — Guardian as operator of a bounded dry-run — is defined by `GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md` but not implemented. The creature has eyes and a fingerprint. It still has no claws.
 
 This checkpoint adds the map. It does not move the territory.
