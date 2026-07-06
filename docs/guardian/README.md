@@ -16,10 +16,12 @@ Guardian is a proposed operating agent layered on top of the Codex Runner diagno
 Guardian runtime:   not implemented
 Plan pack validator: implemented, read-only, scanner-only
 Validator JSON:     implemented, frozen by snapshots
+Validation receipts: implemented, with SHA-256 manifest hashes
 Operating contract: proposed design (v0)
+Operational addendum: proposed design (v0) — defines the first future operational category, not implemented
 ```
 
-Guardian is **not operational yet**. No Guardian runtime exists. The only executable Guardian surface today is the plan pack validator, which is a structural scanner. It checks the bowl; it does not let Guardian drink from it.
+Guardian is **not operational yet**. No Guardian runtime exists. The only executable Guardian surfaces today are the plan pack validator and its generated evidence artifacts (session logs, validation receipts) — all structural scanners. They check the bowl; they do not let Guardian drink from it.
 
 ---
 
@@ -29,6 +31,7 @@ Guardian is **not operational yet**. No Guardian runtime exists. The only execut
 docs/guardian/
   README.md                                         <- you are here
   GUARDIAN_OPERATING_CONTRACT_V0.md                 <- role, authority levels, plan pack structure
+  GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md      <- first future operational category (design only, not implemented)
   GUARDIAN_PLAN_PACK_VALIDATOR_OPERATOR_RUNBOOK.md  <- how to read the validator
   templates/                                        <- blank plan pack templates (8 required files)
   examples/sample-dry-run-plan-pack/                <- a valid golden plan pack
@@ -38,8 +41,10 @@ Supporting code and fixtures:
 
 ```txt
 src/codex_runner/guardian/plan_pack_validator.py                       <- validator source of truth
-src/codex_runner/guardian/runner.py                                    <- validator CLI dispatch (--json supported)
-tests/test_guardian_plan_pack_validator.py                             <- validator tests (23)
+src/codex_runner/guardian/runner.py                                    <- validator CLI dispatch (--json/--write-session-log/--write-receipt)
+src/codex_runner/guardian/session_log.py                               <- session-log writer
+src/codex_runner/guardian/receipt.py                                   <- validation-receipt writer (SHA-256 manifest)
+tests/test_guardian_plan_pack_validator.py                             <- validator tests (50)
 tests/fixtures/guardian_plan_pack_validator_json_valid.json            <- frozen valid JSON snapshot
 tests/fixtures/guardian_plan_pack_validator_json_invalid.json          <- frozen invalid JSON snapshot
 ```
@@ -193,11 +198,12 @@ These are fixed boundaries, not aspirations.
 Read the surface in this order to build the full picture:
 
 1. `docs/guardian/GUARDIAN_OPERATING_CONTRACT_V0.md` — role, authority levels, plan pack structure.
-2. `docs/guardian/templates/README.md` — what a plan pack is and when to use the templates.
-3. `docs/guardian/examples/sample-dry-run-plan-pack/README.md` — the golden sample.
-4. `docs/guardian/GUARDIAN_PLAN_PACK_VALIDATOR_OPERATOR_RUNBOOK.md` — how to read the validator.
-5. `tests/fixtures/guardian_plan_pack_validator_json_valid.json` — the frozen valid shape.
-6. `tests/fixtures/guardian_plan_pack_validator_json_invalid.json` — the frozen invalid shape.
+2. `docs/guardian/GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md` — the first future operational category (design only; defines the scanner→operator boundary, not yet implemented).
+3. `docs/guardian/templates/README.md` — what a plan pack is and when to use the templates.
+4. `docs/guardian/examples/sample-dry-run-plan-pack/README.md` — the golden sample.
+5. `docs/guardian/GUARDIAN_PLAN_PACK_VALIDATOR_OPERATOR_RUNBOOK.md` — how to read the validator.
+6. `tests/fixtures/guardian_plan_pack_validator_json_valid.json` — the frozen valid shape.
+7. `tests/fixtures/guardian_plan_pack_validator_json_invalid.json` — the frozen invalid shape.
 
 For the broader diagnostic spine Guardian layers on top of, continue with the Codex Runner documents below.
 
