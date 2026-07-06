@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,24 @@ RECEIPT_TYPE = "guardian_plan_pack_validation"
 RECEIPT_VERSION = "v0"
 EVIDENCE_SOURCE = "guardian_plan_pack_validator"
 EVIDENCE_GENERATED_BY = "codexrun guardian validate-plan-pack"
+MANIFEST_HASH_ALGORITHM = "sha256"
+
+
+def _required_file_entry(path: Path) -> dict[str, Any]:
+    # Manifest hashes strengthen evidence integrity. They do not approve the
+    # plan, make Guardian operational, or mutate durable state. Only genuine
+    # regular files are hashed; symlinks are treated conservatively as
+    # not-present so an unsafe link can never pull bytes from outside the plan
+    # pack into the digest. Bytes are hashed exactly as stored (no line-ending
+    # normalization).
+    if path.is_symlink() or not path.is_file():
+        return {"present": False, "sha256": None, "size_bytes": None}
+    data = path.read_bytes()
+    return {
+        "present": True,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "size_bytes": len(data),
+    }
 
 
 def build_receipt_payload(
@@ -51,10 +70,11 @@ def build_receipt_payload(
             "durable_mutation_performed": False,
         },
         "plan_pack_manifest": {
+            "hash_algorithm": MANIFEST_HASH_ALGORITHM,
             "files": {
-                name: {"present": present}
-                for name, present in report.required_files.items()
-            }
+                name: _required_file_entry(report.plan_pack_path / name)
+                for name in report.required_files
+            },
         },
         "notes": notes,
     }

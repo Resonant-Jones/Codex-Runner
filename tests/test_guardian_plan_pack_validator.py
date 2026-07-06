@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 from pathlib import Path
 
 import yaml
@@ -886,3 +888,175 @@ def test_gitignore_contains_guardian_receipts() -> None:
     gitignore = (repo_root / ".gitignore").read_text(encoding="utf-8")
 
     assert ".guardian/receipts/" in gitignore
+
+
+_REQUIRED_FILE_NAMES = {
+    "README.md",
+    "PLAN.md",
+    "GOALS.md",
+    "BOUNDARIES.md",
+    "AUTHORIZATION.md",
+    "ESCALATION.md",
+    "SESSION_LOG.md",
+    "TASK_SPEC.yaml",
+}
+_HEX256 = re.compile(r"^[0-9a-f]{64}$")
+
+
+def test_receipt_manifest_has_sha256_algorithm_and_required_files(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(sample_plan_pack_path()),
+            "--write-receipt",
+        ]
+    )
+    receipt = _read_single_receipt(tmp_path / ".guardian" / "receipts")
+    manifest = receipt["plan_pack_manifest"]
+
+    assert manifest["hash_algorithm"] == "sha256"
+    assert set(manifest["files"].keys()) == _REQUIRED_FILE_NAMES
+
+
+def test_receipt_manifest_present_files_have_lowercase_hex_and_int_size(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(sample_plan_pack_path()),
+            "--write-receipt",
+        ]
+    )
+    receipt = _read_single_receipt(tmp_path / ".guardian" / "receipts")
+    files = receipt["plan_pack_manifest"]["files"]
+
+    for name, entry in files.items():
+        assert entry["present"] is True, name
+        assert isinstance(entry["sha256"], str), name
+        assert _HEX256.fullmatch(entry["sha256"]), name
+        assert entry["sha256"] == entry["sha256"].lower(), name
+        assert isinstance(entry["size_bytes"], int), name
+        assert entry["size_bytes"] >= 0, name
+
+
+def test_receipt_manifest_hashes_match_independent_sha256(
+    tmp_path: Path, monkeypatch
+) -> None:
+    plan_pack = copy_plan_pack(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(plan_pack),
+            "--write-receipt",
+        ]
+    )
+    receipt = _read_single_receipt(tmp_path / ".guardian" / "receipts")
+    files = receipt["plan_pack_manifest"]["files"]
+
+    for name in _REQUIRED_FILE_NAMES:
+        data = (plan_pack / name).read_bytes()
+        assert files[name]["sha256"] == hashlib.sha256(data).hexdigest(), name
+        assert files[name]["size_bytes"] == len(data), name
+
+
+def test_receipt_manifest_hash_changes_when_file_changes(
+    tmp_path: Path, monkeypatch
+) -> None:
+    plan_pack = copy_plan_pack(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(plan_pack),
+            "--write-receipt",
+        ]
+    )
+    first_receipts = sorted((tmp_path / ".guardian" / "receipts").glob("*.json"))
+    first_hash = json.loads(first_receipts[-1].read_text(encoding="utf-8"))[
+        "plan_pack_manifest"
+    ]["files"]["README.md"]["sha256"]
+
+    (plan_pack / "README.md").write_text(
+        "changed content for hash delta\n", encoding="utf-8"
+    )
+
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(plan_pack),
+            "--write-receipt",
+        ]
+    )
+    second_receipts = sorted((tmp_path / ".guardian" / "receipts").glob("*.json"))
+    second_hash = json.loads(second_receipts[-1].read_text(encoding="utf-8"))[
+        "plan_pack_manifest"
+    ]["files"]["README.md"]["sha256"]
+
+    assert first_hash != second_hash
+
+
+def test_invalid_pack_receipt_manifest_hashes_present_files_and_nulls_missing(
+    tmp_path: Path, monkeypatch
+) -> None:
+    plan_pack = copy_plan_pack(tmp_path)
+    (plan_pack / "README.md").unlink()
+    monkeypatch.chdir(tmp_path)
+
+    exit_code = main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(plan_pack),
+            "--write-receipt",
+        ]
+    )
+    receipt = _read_single_receipt(tmp_path / ".guardian" / "receipts")
+    files = receipt["plan_pack_manifest"]["files"]
+
+    assert exit_code == 1
+    assert files["README.md"]["present"] is False
+    assert files["README.md"]["sha256"] is None
+    assert files["README.md"]["size_bytes"] is None
+    assert files["PLAN.md"]["present"] is True
+    assert _HEX256.fullmatch(files["PLAN.md"]["sha256"])
+
+
+def test_receipt_writing_does_not_mutate_plan_pack_files(
+    tmp_path: Path, monkeypatch
+) -> None:
+    plan_pack = copy_plan_pack(tmp_path)
+    before = {
+        path.name: path.read_bytes() for path in plan_pack.iterdir()
+    }
+    monkeypatch.chdir(tmp_path)
+
+    main_runner.main(
+        [
+            "guardian",
+            "validate-plan-pack",
+            "--path",
+            str(plan_pack),
+            "--write-receipt",
+        ]
+    )
+    after = {path.name: path.read_bytes() for path in plan_pack.iterdir()}
+
+    assert before == after
