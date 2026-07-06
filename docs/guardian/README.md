@@ -13,7 +13,8 @@ Guardian is a proposed operating agent layered on top of the Codex Runner diagno
 ## 2. Current Status
 
 ```txt
-Guardian runtime:   not implemented
+Guardian runtime:   not implemented (Guardian does not execute plans)
+Dry-run orchestration preflight: implemented, preparation-only, governed by the operational addendum
 Plan pack validator: implemented, read-only, scanner-only
 Validator JSON:     implemented, frozen by snapshots
 Validation receipts: implemented, with SHA-256 manifest hashes
@@ -21,7 +22,7 @@ Operating contract: proposed design (v0)
 Operational addendum: proposed design (v0) — defines the first future operational category, not implemented
 ```
 
-Guardian is **not operational yet**. No Guardian runtime exists. The only executable Guardian surfaces today are the plan pack validator and its generated evidence artifacts (session logs, validation receipts) — all structural scanners. They check the bowl; they do not let Guardian drink from it.
+Guardian is **not operational** in the sense of executing plans. The executable Guardian surfaces today are all scanners or preparation-only: the plan pack validator, its generated evidence (session logs, validation receipts), and the dry-run orchestration preflight (which prepares a record but does not execute). They check the bowl and prepare the road; they do not let Guardian drive.
 
 ---
 
@@ -41,10 +42,12 @@ Supporting code and fixtures:
 
 ```txt
 src/codex_runner/guardian/plan_pack_validator.py                       <- validator source of truth
-src/codex_runner/guardian/runner.py                                    <- validator CLI dispatch (--json/--write-session-log/--write-receipt)
+src/codex_runner/guardian/runner.py                                    <- guardian CLI dispatch (validate-plan-pack + orchestrate-dry-run)
 src/codex_runner/guardian/session_log.py                               <- session-log writer
 src/codex_runner/guardian/receipt.py                                   <- validation-receipt writer (SHA-256 manifest)
+src/codex_runner/guardian/orchestration.py                             <- dry-run orchestration preflight (preparation-only)
 tests/test_guardian_plan_pack_validator.py                             <- validator tests (50)
+tests/test_guardian_orchestration.py                                   <- orchestration preflight tests (22)
 tests/fixtures/guardian_plan_pack_validator_json_valid.json            <- frozen valid JSON snapshot
 tests/fixtures/guardian_plan_pack_validator_json_invalid.json          <- frozen invalid JSON snapshot
 ```

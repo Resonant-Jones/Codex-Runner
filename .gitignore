@@ -46,6 +46,11 @@ Thumbs.db
 # Receipts are generated evidence, not source authority.
 .guardian/receipts/
 
+# Guardian local generated dry-run orchestration records
+# Written by `codexrun guardian orchestrate-dry-run --write-orchestration-log`.
+# Orchestration records are generated evidence, not execution.
+.guardian/orchestrations/
+
 # Environment and secrets
 .env
 .env.*

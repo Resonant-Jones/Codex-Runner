@@ -20,6 +20,9 @@ Authority is fixed, explicit, and not self-promotable.
 - Read-only inspection commands for docs discoverability
 - Example references to Codex Runner dry-run and receipt-report commands
 - Session-log drafting inside the sample plan-pack area
+- dry-run orchestration preparation allowed
+
+The phrase above authorizes the Guardian dry-run orchestration preflight (`codexrun guardian orchestrate-dry-run`) to prepare a local orchestration record only. It does not authorize plan execution, Pi Loop invocation, source mutation, Codexify access, or any durable action.
 
 ## Allowed File Classes
 
