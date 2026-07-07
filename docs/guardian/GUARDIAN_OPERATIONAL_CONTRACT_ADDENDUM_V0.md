@@ -2,20 +2,20 @@
 
 ## 1. Status
 
-- **Status:** contract addendum (design only)
-- **Scope:** docs-only definition of the first future permitted operational category
-- **Runtime impact:** none — no orchestration code exists
+- **Status:** contract addendum for the implemented dry-run orchestration preflight boundary
+- **Scope:** docs-only definition of the first permitted operational category and its limits
+- **Runtime impact:** documentation only; the bounded orchestration preflight CLI now exists, but this document does not expand it beyond preflight
 - **Home repository:** `Resonant-Jones/Campaign-Runner` (`/Volumes/Dev_SSD/Codex-Runner`)
 - **Dependency:** `docs/guardian/GUARDIAN_OPERATING_CONTRACT_V0.md`
 - **Intended reader:** Chris (human operator), Axis (architecture voice), and reviewers deciding whether to approve the first operational implementation slice
 
-> Guardian currently validates, logs, receipts, and fingerprints Plan Packs.
+> Guardian currently validates, logs, receipts, fingerprints Plan Packs, and performs bounded dry-run orchestration preflight.
 >
-> Guardian does not currently operate runs.
+> Guardian still does not execute runs.
 >
-> This addendum defines the first bounded operational category that may be implemented later after explicit Chris approval.
+> This addendum defines and constrains that first bounded operational category.
 
-This addendum is the treaty. It does not build the machine. It defines the first permitted operational category. It does not grant it yet.
+This addendum is the treaty. It constrains the machine that now exists. It defines the first permitted operational category. It does not grant execution.
 
 ---
 
@@ -35,15 +35,15 @@ operator of a bounded dry-run
 
 It exists because the scanner boundary is now complete (validation, JSON, session logs, hash-strengthened receipts, runbooks, hygiene). The next category — Guardian *operating* a bounded run, even a dry-run — is a category change, not another scanner artifact. A category change deserves a contract before any implementation.
 
-The addendum answers eight questions a reviewer needs answered before approving the first operational slice (see §5–§13). It does **not** implement that slice.
+The addendum answers eight questions a reviewer needs answered about the first operational slice (see §5–§13). It does not implement anything by itself.
 
-The future step defined here is:
+The implemented step defined here is:
 
 ```txt
 Guardian-operated dry-run orchestration stub
 ```
 
-That step is **not implemented by this slice.**
+That step is implemented in CLI form and remains preflight-only.
 
 ---
 
@@ -57,6 +57,9 @@ emit JSON                          (--json)
 write a session log                (--write-session-log, .guardian/sessions/)
 write a validation receipt         (--write-receipt, .guardian/receipts/)
 fingerprint required Plan Pack files with SHA-256
+verify validation receipt continuity and current file hashes
+write orchestration logs           (--write-orchestration-log, .guardian/orchestrations/)
+write orchestration receipts       (--write-orchestration-receipt, .guardian/orchestration-receipts/)
 ```
 
 Today Guardian cannot:
@@ -81,7 +84,7 @@ All nine validator authority locks remain `false` in every artifact Guardian emi
 
 ## 4. Category Boundary
 
-This addendum introduces the term **operated dry-run orchestration** as the first permitted operational category. It is deliberately narrow.
+This addendum uses the term **operated dry-run orchestration** for the first permitted operational category. It is deliberately narrow.
 
 Operated dry-run orchestration means: Guardian reads a validated Plan Pack, verifies its validation evidence, constructs a bounded dry-run orchestration request, and produces an orchestration record. It stops before execution authority.
 
@@ -96,19 +99,19 @@ It is **not**:
 - approval
 - merge
 
-The phrase "operational contract" does **not** mean Guardian is operational now. It means a future operational category is now defined well enough to be reviewed, and only then — after explicit Chris approval — implemented.
+The phrase "operational contract" does **not** mean Guardian has execution authority now. It means the first operational category now exists in bounded preflight form and remains limited by this contract.
 
 ---
 
 ## 5. First Future Operational Step (Q1: What is Guardian allowed to do first?)
 
-The first allowed future operational step is:
+The first allowed operational step is:
 
 ```txt
 Guardian-operated dry-run orchestration stub
 ```
 
-In that future step, Guardian may:
+In that step, Guardian may:
 
 ```txt
 read a validated Plan Pack
@@ -139,8 +142,6 @@ auto-fill reviewer decisions
 
 This addendum does **not**:
 
-- implement the orchestration command
-- implement the orchestration record writer
 - change any authority lock
 - invoke Pi Loop
 - touch Codexify
@@ -148,18 +149,19 @@ This addendum does **not**:
 - approve any Plan Pack
 - promote any trust level
 - replace `GUARDIAN_OPERATING_CONTRACT_V0.md` (it layers on top of it)
+- imply that any future UI bridge is already shipped
 
 ---
 
 ## 7. Proposed Future Command Shape (Q3: What command shape will exist?)
 
-A proposed future command shape, **defined by contract only and not implemented here**:
+Implemented command shape:
 
 ```bash
 codexrun guardian orchestrate-dry-run --plan-pack <plan-pack-dir>
 ```
 
-Optional future flags (defined, not implemented):
+Implemented flags:
 
 ```bash
 --require-receipt <receipt-path>
@@ -168,15 +170,13 @@ Optional future flags (defined, not implemented):
 --json
 ```
 
-> This command is proposed by contract only. It does not exist until a later implementation slice.
-
-No CLI code is added by this slice. No parser, no `argparse` subcommand, no runner wiring. The command is a design artifact for review.
+The command exists in `src/codex_runner/guardian/runner.py` and is covered by `tests/test_guardian_orchestration.py`. This document remains the boundary contract, not the implementation source of truth.
 
 ---
 
 ## 8. Required Preconditions (Q4: What must be validated before orchestration?)
 
-Before the future orchestration stub may proceed, **all** of the following must hold. If any fails, the stub must stop.
+Before the orchestration stub may proceed, **all** of the following must hold. If any fails, the stub must stop.
 
 ```txt
 Plan Pack validation passes.
@@ -203,7 +203,7 @@ The hash re-verification step is critical: a receipt proves a past validation. R
 
 ## 9. Required Evidence Checks (Q4 cont.)
 
-The future stub must treat the validation receipt as **evidence to be checked**, not as authority. Concretely it must verify:
+The stub must treat the validation receipt as **evidence to be checked**, not as authority. Concretely it must verify:
 
 ```txt
 receipt schema is the known v0 validation receipt shape
@@ -223,16 +223,16 @@ A receipt that claims approval or execution already occurred is a hard stop. A r
 
 ## 10. Required Generated Records (Q5: What receipts or logs must be produced?)
 
-The future dry-run orchestration stub should produce local generated records under git-ignored paths:
+The dry-run orchestration stub produces local generated records under git-ignored paths:
 
 ```txt
 .guardian/orchestrations/             (orchestration attempt logs)
 .guardian/orchestration-receipts/     (orchestration receipts)
 ```
 
-These paths must be added to `.gitignore` in whatever future slice implements them. They are **not** added by this docs slice.
+These paths are implementation-owned generated output. This document does not change their behavior.
 
-The future orchestration record should contain at least:
+The orchestration record contains at least:
 
 ```yaml
 orchestration_type: guardian_operated_dry_run
