@@ -435,7 +435,7 @@ Operational widening (plan execution, Pi Loop invocation from Guardian, Codexify
 
 The scanner phase is complete, and the **first operational stub is now implemented (preparation-only)**: `codexrun guardian orchestrate-dry-run` reads a validated Plan Pack plus a Guardian validation receipt, verifies all addendum preconditions (type/version, `validation.valid`, authority locks all false, evidence flags non-authoritative, manifest `sha256` + live hash continuity, `AUTHORIZATION.md` consent, no boundary conflict, repo-boundary path checks), and optionally writes a generated orchestration record under git-ignored `.guardian/orchestrations/`. It is governed by `docs/guardian/GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md`.
 
-This stub does **not** execute the plan, invoke Pi Loop, mutate source, touch Codexify, or grant any authority. All nine authority locks remain `false`; `guardian_operational` and `pi_loop_invocation_allowed` stay `false`. Guardian prepares the road; it does not drive.
+This stub does **not** execute the plan, invoke Pi Loop, mutate source, touch Codexify, or grant any authority. All nine authority locks remain `false`; `guardian_operational` and `pi_loop_invocation_allowed` stay `false`. Guardian prepares the road; it does not drive. The stub can also optionally write a referenceable orchestration receipt (`--write-orchestration-receipt`, under git-ignored `.guardian/orchestration-receipts/`) that wraps the preflight result and adds a SHA-256 of the validation receipt file itself.
 
 The next honest slice options:
 
@@ -464,7 +464,7 @@ Two scanner spines, packaged and legible. The scanner phase is complete, and the
 ```txt
 Pi Loop diagnostic spine:   receipts -> report -> JSON -> snapshots -> runbook
 Guardian validation spine:  contract -> validator -> JSON -> snapshots -> runbook -> index -> session logs -> receipts (SHA-256)
-Guardian operational stub:  orchestrate-dry-run preflight -> orchestration records (no execution)
+Guardian operational stub:  orchestrate-dry-run preflight -> orchestration logs -> orchestration receipts (no execution)
 ```
 
 The scanner spines are read-only and frozen by snapshots. The orchestration stub is preparation-only: it verifies and records; it does not execute. All authority locks remain `false` across every artifact.

@@ -9,6 +9,7 @@ from .orchestration import (
     render_result as render_orchestration_result,
     write_orchestration_log,
 )
+from .orchestration_receipt import write_orchestration_receipt
 from .plan_pack_validator import render_report, validate_plan_pack
 from .receipt import write_receipt
 from .session_log import write_session_log
@@ -16,6 +17,7 @@ from .session_log import write_session_log
 DEFAULT_SESSIONS_DIR = Path(".guardian/sessions")
 DEFAULT_RECEIPTS_DIR = Path(".guardian/receipts")
 DEFAULT_ORCHESTRATIONS_DIR = Path(".guardian/orchestrations")
+DEFAULT_ORCHESTRATION_RECEIPTS_DIR = Path(".guardian/orchestration-receipts")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -74,6 +76,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Write a generated orchestration record under .guardian/orchestrations/",
     )
+    orchestrate_parser.add_argument(
+        "--write-orchestration-receipt",
+        action="store_true",
+        help="Write a generated orchestration receipt under .guardian/orchestration-receipts/",
+    )
     return parser
 
 
@@ -117,9 +124,16 @@ def _run_validate_plan_pack(args: argparse.Namespace) -> int:
 
 def _run_orchestrate_dry_run(args: argparse.Namespace) -> int:
     result = orchestrate_preflight(args.plan_pack, args.require_receipt)
+    orchestration_log_path: Path | None = None
     if args.write_orchestration_log:
-        write_orchestration_log(
+        orchestration_log_path = write_orchestration_log(
             result, orchestrations_dir=DEFAULT_ORCHESTRATIONS_DIR
+        )
+    if args.write_orchestration_receipt:
+        write_orchestration_receipt(
+            result,
+            orchestration_log_path=orchestration_log_path,
+            receipts_dir=DEFAULT_ORCHESTRATION_RECEIPTS_DIR,
         )
     if args.json:
         print(json.dumps(result, indent=2))
