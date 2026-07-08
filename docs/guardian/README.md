@@ -19,7 +19,8 @@ Plan pack validator: implemented, read-only, scanner-only
 Validator JSON:     implemented, frozen by snapshots
 Validation receipts: implemented, with SHA-256 manifest hashes
 Operating contract: proposed design (v0)
-Operational addendum: proposed design (v0) — defines the first future operational category, not implemented
+Operational addendum: active contract for the implemented preflight category (still no execution)
+UI bridge contract: docs-only proposal for a future Codexify -> Codex Runner preflight surface
 ```
 
 Guardian is **not operational** in the sense of executing plans. The executable Guardian surfaces today are all scanners or preparation-only: the plan pack validator, its generated evidence (session logs, validation receipts), and the dry-run orchestration preflight (which prepares a record but does not execute). They check the bowl and prepare the road; they do not let Guardian drive.
@@ -32,7 +33,8 @@ Guardian is **not operational** in the sense of executing plans. The executable 
 docs/guardian/
   README.md                                         <- you are here
   GUARDIAN_OPERATING_CONTRACT_V0.md                 <- role, authority levels, plan pack structure
-  GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md      <- first future operational category (design only, not implemented)
+  GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md      <- implemented dry-run orchestration preflight boundary (still no execution)
+  GUARDIAN_UI_COMMAND_SURFACE_CONTRACT_V0.md        <- proposed Codexify bridge contract for preflight-only UI/backend integration
   GUARDIAN_PLAN_PACK_VALIDATOR_OPERATOR_RUNBOOK.md  <- how to read the validator
   templates/                                        <- blank plan pack templates (8 required files)
   examples/sample-dry-run-plan-pack/                <- a valid golden plan pack
@@ -72,6 +74,15 @@ Guardian is bounded by three fixed authority levels (defined fully in `GUARDIAN_
 
 Level 3 is Chris's alone. It is never delegable to Guardian.
 
+The currently implemented operational surface stops before execution:
+
+- `codexrun guardian validate-plan-pack`
+- `codexrun guardian validate-plan-pack --write-receipt`
+- `codexrun guardian orchestrate-dry-run`
+- `codexrun guardian orchestrate-dry-run --write-orchestration-log --write-orchestration-receipt`
+
+Those commands produce local evidence only. They do not invoke Pi Loop, mutate source, touch Codexify, or promote authority.
+
 ---
 
 ## 5. Plan Pack Templates
@@ -95,9 +106,9 @@ It is a **sample**, not an authorization to operate Guardian or execute anything
 
 ---
 
-## 7. Validator CLI
+## 7. Executable Guardian Surfaces
 
-The plan pack validator is the only executable Guardian surface today. It is read-only and scanner-only.
+The executable Guardian surfaces today are `validate-plan-pack` and `orchestrate-dry-run`. Both remain bounded: `validate-plan-pack` is read-only and scanner-only, while `orchestrate-dry-run` is preparation-only and does not execute.
 
 Human-readable report:
 
@@ -202,12 +213,13 @@ These are fixed boundaries, not aspirations.
 Read the surface in this order to build the full picture:
 
 1. `docs/guardian/GUARDIAN_OPERATING_CONTRACT_V0.md` — role, authority levels, plan pack structure.
-2. `docs/guardian/GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md` — the first future operational category (design only; defines the scanner→operator boundary, not yet implemented).
+2. `docs/guardian/GUARDIAN_OPERATIONAL_CONTRACT_ADDENDUM_V0.md` — the implemented dry-run orchestration preflight boundary (preparation-only; no execution authority).
 3. `docs/guardian/templates/README.md` — what a plan pack is and when to use the templates.
 4. `docs/guardian/examples/sample-dry-run-plan-pack/README.md` — the golden sample.
 5. `docs/guardian/GUARDIAN_PLAN_PACK_VALIDATOR_OPERATOR_RUNBOOK.md` — how to read the validator.
-6. `tests/fixtures/guardian_plan_pack_validator_json_valid.json` — the frozen valid shape.
-7. `tests/fixtures/guardian_plan_pack_validator_json_invalid.json` — the frozen invalid shape.
+6. `docs/guardian/GUARDIAN_UI_COMMAND_SURFACE_CONTRACT_V0.md` — the proposed Codexify bridge for preflight-only UI/backend integration.
+7. `tests/fixtures/guardian_plan_pack_validator_json_valid.json` — the frozen valid shape.
+8. `tests/fixtures/guardian_plan_pack_validator_json_invalid.json` — the frozen invalid shape.
 
 For the broader diagnostic spine Guardian layers on top of, continue with the Codex Runner documents below.
 
