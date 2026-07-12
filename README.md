@@ -91,61 +91,53 @@ NO CODEXIFY INGESTION
 
 ## Architecture
 
-```text
-                                  HUMAN AUTHORITY
-                                         |
-                                         v
-+------------------+          +-------------------------+
-| Repository or    |          | Guardian Plan Pack      |
-| target workspace |          | + explicit authorization|
-+--------+---------+          +------------+------------+
-         |                                 |
-         v                                 v
-+------------------+          +-------------------------+
-| Structured audit |          | Guardian validator      |
-+--------+---------+          | scanner-only            |
-         |                    +------------+------------+
-         v                                 |
-+------------------+                       v
-| Campaign compiler|          +-------------------------+
-+--------+---------+          | Validation report, log, |
-         |                    | and SHA-256 receipt      |
-         v                    +------------+------------+
-+------------------+                       |
-| Deterministic    |                       v
-| campaign state   |          +-------------------------+
-+--------+---------+          | Dry-run orchestration   |
-         |                    | preflight                |
-         v                    +------------+------------+
-+------------------+                       |
-| Task selection   |                       v
-| and materialize  |          +-------------------------+
-+--------+---------+          | Orchestration log and   |
-         |                    | orchestration receipt   |
-         v                    +-------------------------+
-+------------------+
-| Dry-run or       |
-| governed execute |
-+--------+---------+
-         |
-         v
-+------------------+          +-------------------------+
-| Implementation,  |          | Existing Pi Loop       |
-| task, state, and |          | receipt                 |
-| run receipts     |          +------------+------------+
-+------------------+                       |
-                                           v
-                              +-------------------------+
-                              | Compatibility scanner   |
-                              | read-only               |
-                              +------------+------------+
-                                           |
-                                           v
-                              +-------------------------+
-                              | Version, schema, proof, |
-                              | and ingestion-readiness |
-                              | report                  |
-                              +-------------------------+
+The three surfaces are siblings under the same authority doctrine. They are not one continuous execution pipeline.
+
+```mermaid
+flowchart TB
+    Human["Human Authority"]
+
+    subgraph Runner["Deterministic Runner"]
+        Repo["Repository or Target Workspace"]
+        Audit["Structured Audit"]
+        Compiler["Campaign Compiler"]
+        State["Deterministic Campaign State"]
+        Tasks["Task Selection and Materialization"]
+        Execute["Dry Run or Governed Execute"]
+        RunReceipts["Implementation, Task, State, and Run Receipts"]
+
+        Repo --> Audit
+        Audit --> Compiler
+        Compiler --> State
+        State --> Tasks
+        Tasks --> Execute
+        Execute --> RunReceipts
+    end
+
+    subgraph Guardian["Guardian Preflight"]
+        PlanPack["Guardian Plan Pack"]
+        Validator["Plan Pack Validator<br/>Scanner Only"]
+        ValidationEvidence["Validation Report, Session Log,<br/>and SHA-256 Receipt"]
+        Preflight["Dry-Run Orchestration Preflight"]
+        OrchestrationEvidence["Orchestration Log<br/>and Receipt"]
+
+        PlanPack --> Validator
+        Validator --> ValidationEvidence
+        ValidationEvidence --> Preflight
+        Preflight --> OrchestrationEvidence
+    end
+
+    subgraph PiLoop["Pi Loop Receipt Compatibility"]
+        ExistingReceipt["Existing Pi Loop Receipt"]
+        Scanner["Compatibility Scanner<br/>Read Only"]
+        Readiness["Version, Schema, Proof,<br/>and Ingestion-Readiness Report"]
+
+        ExistingReceipt --> Scanner
+        Scanner --> Readiness
+    end
+
+    Human --> Repo
+    Human --> PlanPack
 ```
 
 ### Boundary summary
