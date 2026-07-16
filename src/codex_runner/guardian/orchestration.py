@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .plan_pack_validator import AUTHORITY_LOCKS
+from .repo_boundary import resolve_repo_root
 from .session_log import safe_slug, timestamp_utc
 
 ORCHESTRATION_TYPE = "guardian_operated_dry_run"
@@ -18,11 +19,6 @@ BOUNDARY_CONFLICT_PHRASES = (
     "dry-run orchestration forbidden",
     "orchestration forbidden",
     "guardian orchestration forbidden",
-)
-REPO_ROOT = Path("/Volumes/Dev_SSD/Codex-Runner")
-FORBIDDEN_PATHS = (
-    Path("/Volumes/Dev_SSD/Codexify-main"),
-    Path("/Volumes/Dev_SSD/ResonantConstructs/Codexify-Core"),
 )
 
 AUTHORITY_KEYS = tuple(AUTHORITY_LOCKS.keys())
@@ -47,9 +43,6 @@ PASS_REASON = (
     "(no execution occurred)"
 )
 
-_REPO_ROOT_RESOLVED = REPO_ROOT.resolve()
-_FORBIDDEN_RESOLVED = tuple(p.resolve() for p in FORBIDDEN_PATHS)
-
 
 def _resolve_safely(path: Path) -> Path | None:
     try:
@@ -62,13 +55,11 @@ def _path_inside(child: Path, root: Path) -> bool:
     return child == root or root in child.parents
 
 
-def _repo_boundary_ok(path: Path) -> bool:
+def _repo_boundary_ok(path: Path, repo_root: Path) -> bool:
     resolved = _resolve_safely(path)
     if resolved is None:
         return False
-    if not _path_inside(resolved, _REPO_ROOT_RESOLVED):
-        return False
-    return not any(_path_inside(resolved, fp) for fp in _FORBIDDEN_RESOLVED)
+    return _path_inside(resolved, repo_root)
 
 
 def _read_text(path: Path) -> str:
@@ -132,13 +123,20 @@ def _verify_manifest_hashes(
     return all_match, {"hash_algorithm": HASH_ALGORITHM, "files": hash_files}
 
 
-def preflight(plan_pack_path: Path, receipt_path: Path) -> dict[str, Any]:
+def preflight(
+    plan_pack_path: Path,
+    receipt_path: Path,
+    *,
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    trusted_repo_root = resolve_repo_root(repo_root)
     preconditions = _empty_preconditions()
     plan_pack = _resolve_safely(plan_pack_path)
     receipt_resolved = _resolve_safely(receipt_path)
 
     preconditions["repo_boundary_valid"] = bool(
-        _repo_boundary_ok(plan_pack_path) and _repo_boundary_ok(receipt_path)
+        _repo_boundary_ok(plan_pack_path, trusted_repo_root)
+        and _repo_boundary_ok(receipt_path, trusted_repo_root)
     )
 
     if plan_pack is not None and plan_pack.is_dir():
@@ -151,9 +149,7 @@ def preflight(plan_pack_path: Path, receipt_path: Path) -> dict[str, Any]:
         receipt = _load_receipt(receipt_resolved)
 
     if receipt:
-        preconditions["receipt_type_valid"] = (
-            receipt.get("receipt_type") == RECEIPT_TYPE
-        )
+        preconditions["receipt_type_valid"] = receipt.get("receipt_type") == RECEIPT_TYPE
         preconditions["receipt_version_valid"] = (
             receipt.get("receipt_version") == RECEIPT_VERSION
         )
@@ -182,9 +178,7 @@ def preflight(plan_pack_path: Path, receipt_path: Path) -> dict[str, Any]:
         )
 
     manifest = receipt.get("plan_pack_manifest") or {} if receipt else {}
-    files_manifest = (
-        manifest.get("files") if isinstance(manifest, dict) else None
-    )
+    files_manifest = manifest.get("files") if isinstance(manifest, dict) else None
     if (
         preconditions["plan_pack_exists"]
         and preconditions["manifest_algorithm_sha256"]
@@ -208,9 +202,7 @@ def preflight(plan_pack_path: Path, receipt_path: Path) -> dict[str, Any]:
 
     all_passed = all(preconditions.values())
     failed = [name for name, ok in preconditions.items() if not ok]
-    reason = PASS_REASON if all_passed else (
-        "preconditions failed: " + ", ".join(failed)
-    )
+    reason = PASS_REASON if all_passed else "preconditions failed: " + ", ".join(failed)
 
     return {
         "orchestration_type": ORCHESTRATION_TYPE,
@@ -218,6 +210,7 @@ def preflight(plan_pack_path: Path, receipt_path: Path) -> dict[str, Any]:
         "result": "pass" if all_passed else "fail",
         "reason": reason,
         "created_at": timestamp_utc(),
+        "repo_root": str(trusted_repo_root),
         "plan_pack_path": str(plan_pack) if plan_pack else str(plan_pack_path),
         "validation_receipt_path": (
             str(receipt_resolved) if receipt_resolved else str(receipt_path)
@@ -235,6 +228,7 @@ def render_result(result: dict[str, Any]) -> str:
     lines: list[str] = []
     if result["result"] == "pass":
         lines.append("Guardian dry-run orchestration preflight: PASS")
+        lines.append(f"Repository root: {result['repo_root']}")
         lines.append(f"Plan Pack: {result['plan_pack_path']}")
         lines.append(f"Validation receipt: {result['validation_receipt_path']}")
         lines.append("Hash verification: PASS")
