@@ -12,6 +12,7 @@ from .orchestration import (
 from .orchestration_receipt import write_orchestration_receipt
 from .plan_pack_validator import render_report, validate_plan_pack
 from .receipt import write_receipt
+from .repo_boundary import RepoBoundaryError, resolve_repo_root
 from .session_log import write_session_log
 
 DEFAULT_SESSIONS_DIR = Path(".guardian/sessions")
@@ -65,6 +66,15 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         required=True,
         help="Path to a Guardian validation receipt for the plan pack",
+    )
+    orchestrate_parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        help=(
+            "Trusted repository top-level. Defaults to CODEX_RUNNER_REPO_ROOT, "
+            "then the git root containing the current working directory."
+        ),
     )
     orchestrate_parser.add_argument(
         "--json",
@@ -123,7 +133,12 @@ def _run_validate_plan_pack(args: argparse.Namespace) -> int:
 
 
 def _run_orchestrate_dry_run(args: argparse.Namespace) -> int:
-    result = orchestrate_preflight(args.plan_pack, args.require_receipt)
+    repo_root = resolve_repo_root(args.repo_root)
+    result = orchestrate_preflight(
+        args.plan_pack,
+        args.require_receipt,
+        repo_root=repo_root,
+    )
     orchestration_log_path: Path | None = None
     if args.write_orchestration_log:
         orchestration_log_path = write_orchestration_log(
@@ -143,9 +158,13 @@ def _run_orchestrate_dry_run(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    if args.command == "validate-plan-pack":
-        return _run_validate_plan_pack(args)
-    if args.command == "orchestrate-dry-run":
-        return _run_orchestrate_dry_run(args)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "validate-plan-pack":
+            return _run_validate_plan_pack(args)
+        if args.command == "orchestrate-dry-run":
+            return _run_orchestrate_dry_run(args)
+    except RepoBoundaryError as exc:
+        parser.error(str(exc))
     raise ValueError(f"unsupported guardian command: {args.command}")
