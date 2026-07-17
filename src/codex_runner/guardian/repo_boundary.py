@@ -18,11 +18,22 @@ def _resolved(path: Path) -> Path:
         raise RepoBoundaryError(f"unable to resolve repository path: {path}") from exc
 
 
+def _git_subprocess_env() -> dict[str, str]:
+    """Return an environment that cannot redirect git away from cwd."""
+
+    return {
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith("GIT_")
+    }
+
+
 def _git_toplevel(start: Path) -> Path:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
             cwd=str(start),
+            env=_git_subprocess_env(),
             text=True,
             capture_output=True,
             check=False,
@@ -36,7 +47,15 @@ def _git_toplevel(start: Path) -> Path:
         raise RepoBoundaryError(
             f"unable to resolve a git repository from {start}{suffix}"
         )
-    return _resolved(Path(result.stdout.strip()))
+    root = _resolved(Path(result.stdout.strip()))
+    resolved_start = _resolved(start)
+    try:
+        resolved_start.relative_to(root)
+    except ValueError as exc:
+        raise RepoBoundaryError(
+            f"git repository boundary {root} does not contain {resolved_start}"
+        ) from exc
+    return root
 
 
 def resolve_repo_root(
