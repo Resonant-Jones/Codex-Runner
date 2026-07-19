@@ -45,6 +45,9 @@ TASK_SLUG_PATTERN = re.compile(r"^[a-z0-9_]+$")
 RISK_VALUES = {"HIGH", "MED", "LOW"}
 TASK_STATUS_VALUES = {"pending", "success", "failed", "blocked"}
 TASK_RESULT_STATUS_VALUES = {"success", "failed", "blocked"}
+CODEX_REQUIRED_STRUCTURED_OUTPUT_CAPABILITY = "--output-schema"
+CODEX_CAPABILITY_INSPECTION_COMMAND = ("codex", "exec", "--help")
+CODEX_VERSION_INSPECTION_COMMAND = ("codex", "--version")
 
 MAPPING_START = "<!-- RUNNER_TASK_MAP -->"
 MAPPING_END = "<!-- /RUNNER_TASK_MAP -->"
@@ -67,6 +70,16 @@ class SelectedCampaign:
     campaign_id: str
     campaign_slug: str
     reason: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class CodexCliCapability:
+    executable: str
+    version: str
+    inspection_command: tuple[str, ...]
+    inspection_exit_code: int
+    supports_output_schema: bool
+    inspection_output: str
 
 
 def now_iso() -> str:
@@ -322,7 +335,7 @@ def ensure_repo_root(repo_root: Path, debug: bool) -> None:
         )
 
 
-def ensure_provider_available(provider: str) -> None:
+def ensure_provider_available(provider: str) -> str:
     binaries = {
         "codex": "codex",
         "claude": "claude",
@@ -330,10 +343,81 @@ def ensure_provider_available(provider: str) -> None:
     binary = binaries.get(provider)
     if not binary:
         raise RunnerError(f"Unsupported provider: {provider}")
-    if not shutil_which(binary):
+    executable = shutil_which(binary)
+    if not executable:
         raise RunnerError(
             f"{provider} executable ('{binary}') not found on PATH"
         )
+    return executable
+
+
+def inspect_codex_cli_capability(
+    repo_root: Path, debug: bool = False
+) -> CodexCliCapability:
+    executable = shutil_which("codex")
+    if not executable:
+        raise RunnerError(
+            "Codex CLI structured-output compatibility check failed.\n"
+            "detected_version: unavailable\n"
+            f"missing_required_capability: {CODEX_REQUIRED_STRUCTURED_OUTPUT_CAPABILITY}\n"
+            "capability_inspection_command: codex exec --help\n"
+            "remediation: install Codex CLI, then verify that local `codex exec --help` "
+            "lists `--output-schema`.\n"
+            "provider_execution_occurred: false"
+        )
+
+    version_result = run_cmd(
+        list(CODEX_VERSION_INSPECTION_COMMAND),
+        cwd=repo_root,
+        capture_output=True,
+        debug=debug,
+    )
+    version_output = (version_result.stdout or version_result.stderr or "").strip()
+    version = version_output if version_result.returncode == 0 and version_output else "unknown"
+
+    help_result = run_cmd(
+        list(CODEX_CAPABILITY_INSPECTION_COMMAND),
+        cwd=repo_root,
+        capture_output=True,
+        debug=debug,
+    )
+    inspection_output = "\n".join(
+        part.strip()
+        for part in (help_result.stdout or "", help_result.stderr or "")
+        if part.strip()
+    )
+    supports_output_schema = help_result.returncode == 0 and bool(
+        re.search(r"(?m)^\s*--output-schema(?:\s|[=<,])", inspection_output)
+    )
+    return CodexCliCapability(
+        executable=executable,
+        version=version,
+        inspection_command=CODEX_CAPABILITY_INSPECTION_COMMAND,
+        inspection_exit_code=help_result.returncode,
+        supports_output_schema=supports_output_schema,
+        inspection_output=inspection_output,
+    )
+
+
+def ensure_codex_cli_compatible(
+    repo_root: Path, debug: bool = False
+) -> CodexCliCapability:
+    capability = inspect_codex_cli_capability(repo_root, debug)
+    if capability.supports_output_schema:
+        return capability
+
+    command = " ".join(capability.inspection_command)
+    raise RunnerError(
+        "Codex CLI structured-output compatibility check failed.\n"
+        f"detected_version: {capability.version}\n"
+        f"missing_required_capability: {CODEX_REQUIRED_STRUCTURED_OUTPUT_CAPABILITY}\n"
+        f"capability_inspection_command: {command}\n"
+        f"capability_inspection_exit_code: {capability.inspection_exit_code}\n"
+        "remediation: install or upgrade to a Codex CLI whose local "
+        "`codex exec --help` lists `--output-schema` (official installation "
+        "guidance: `codex --upgrade`), then retry.\n"
+        "provider_execution_occurred: false"
+    )
 
 
 def shutil_which(binary: str) -> str | None:
@@ -2073,7 +2157,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(resolved_argv)
 
     ensure_repo_root(args.repo_root, args.debug)
-    ensure_provider_available(args.provider)
+    provider_executable = ensure_provider_available(args.provider)
+    if args.provider == "codex" and provider_executable:
+        ensure_codex_cli_compatible(args.repo_root, args.debug)
 
     base_ref_sha = git_resolve_ref(args.repo_root, args.base_ref, args.debug)
     cli_args = sanitize_cli_args(resolved_argv)
