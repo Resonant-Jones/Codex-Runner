@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Runner Campaign Dry Run"
+  short_description: "Experimental deterministic campaign dry runs"
+  default_prompt: "Use $codex-runner-delegation to request a bounded Deterministic Campaign Runner dry run for this repository."
