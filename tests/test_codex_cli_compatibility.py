@@ -188,6 +188,7 @@ def test_invalid_structured_task_output_does_not_return_result(monkeypatch, tmp_
     with pytest.raises(runner.RunnerError, match="tests_ran must be array"):
         runner.run_task_agent(
             repo_root=tmp_path,
+            prompt_text="bounded task-agent compatibility test prompt",
             task={"id": "task-1", "activation_prompt": "prompt"},
             task_result_schema_file=tmp_path / "task.schema.json",
             provider="codex",
