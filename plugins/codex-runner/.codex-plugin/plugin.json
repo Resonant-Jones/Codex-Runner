@@ -1,0 +1,19 @@
+{
+  "name": "codex-runner",
+  "version": "0.1.0",
+  "description": "Experimental local MCP access to Codex Runner campaign dry-run orchestration.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Runner",
+    "shortDescription": "Run bounded Codex Runner campaign dry-runs.",
+    "longDescription": "Adds one local MCP tool for Deterministic Campaign Runner dry-run orchestration. Results are Runner-owned evidence, not approval or execution authority.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": ["Local MCP tool"],
+    "defaultPrompt": "Run a Codex Runner campaign dry-run for this repository."
+  },
+  "mcpServers": "./.mcp.json"
+}

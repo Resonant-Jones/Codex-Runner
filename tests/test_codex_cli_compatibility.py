@@ -95,6 +95,78 @@ def test_missing_codex_executable_fails_closed(monkeypatch, tmp_path) -> None:
     assert "provider_execution_occurred: false" in message
 
 
+def test_explicit_codex_executable_is_used_for_inspection_and_execution(
+    monkeypatch, tmp_path
+) -> None:
+    executable = tmp_path / "codex-selected"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o755)
+    selected = str(executable.resolve())
+    observed: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        observed.append(command)
+        if command[-1] == "--version":
+            return completed(command, 0, "codex-cli selected\n")
+        if command[-2:] == ["exec", "--help"]:
+            return completed(command, 0, "Options:\n  --output-schema <FILE>\n")
+        return completed(command, 0)
+
+    monkeypatch.setattr(runner, "run_cmd", fake_run)
+    capability = runner.inspect_codex_cli_capability(
+        tmp_path, codex_executable=selected
+    )
+    runner.run_codex_exec(
+        tmp_path,
+        prompt_text="prompt",
+        output_schema=tmp_path / "schema.json",
+        output_path=tmp_path / "output.json",
+        model=None,
+        configs=[],
+        debug=False,
+        codex_executable=selected,
+    )
+
+    assert capability.executable == selected
+    assert capability.inspection_command == (selected, "exec", "--help")
+    assert observed[:2] == [[selected, "--version"], [selected, "exec", "--help"]]
+    assert observed[2][0] == selected
+
+
+@pytest.mark.parametrize("kind", ["missing", "non_executable", "relative"])
+def test_invalid_codex_override_fails_before_provider_command(
+    monkeypatch, tmp_path, kind
+) -> None:
+    if kind == "missing":
+        override = tmp_path / "missing-codex"
+    elif kind == "non_executable":
+        override = tmp_path / "not-executable"
+        override.write_text("not executable", encoding="utf-8")
+    else:
+        override = Path("codex-selected")
+
+    called = False
+
+    def fail_if_run(*args, **kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("provider or capability subprocess was invoked")
+
+    monkeypatch.setattr(runner, "run_cmd", fail_if_run)
+    with pytest.raises(runner.RunnerError, match="codex-executable"):
+        runner.run_codex_exec(
+            tmp_path,
+            prompt_text="prompt",
+            output_schema=tmp_path / "schema.json",
+            output_path=tmp_path / "output.json",
+            model=None,
+            configs=[],
+            debug=False,
+            codex_executable=override,
+        )
+    assert called is False
+
+
 def test_compatibility_error_contains_required_fields(monkeypatch, tmp_path) -> None:
     capability = runner.CodexCliCapability(
         executable="/opt/homebrew/bin/codex",
@@ -142,6 +214,55 @@ def test_main_stops_before_provider_or_state_transition(monkeypatch, tmp_path) -
         runner.main(["bounded"])
     assert events == []
     assert not (tmp_path / runner.STATE_TRANSITIONS_PATH).exists()
+
+
+def test_main_reuses_selected_codex_for_capability_and_campaign(
+    monkeypatch, tmp_path
+) -> None:
+    executable = tmp_path / "codex-selected"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o755)
+    selected = str(executable.resolve())
+    args = argparse.Namespace(
+        repo_root=tmp_path,
+        debug=False,
+        provider="codex",
+        base_ref="HEAD",
+        passes=1,
+        codex_executable=selected,
+    )
+    observed: dict[str, object] = {}
+
+    monkeypatch.setattr(runner, "resolve_entry_argv", lambda argv: ["bounded"])
+    monkeypatch.setattr(runner, "parse_args", lambda argv: args)
+    monkeypatch.setattr(runner, "ensure_repo_root", lambda *args: None)
+    monkeypatch.setattr(
+        runner,
+        "ensure_provider_available",
+        lambda provider, codex_executable=None: (
+            observed.setdefault("provider", codex_executable) or selected
+        ),
+    )
+    monkeypatch.setattr(
+        runner,
+        "ensure_codex_cli_compatible",
+        lambda repo_root, debug, codex_executable=None: observed.setdefault(
+            "capability", codex_executable
+        ),
+    )
+    monkeypatch.setattr(runner, "git_resolve_ref", lambda *args: "deadbeef")
+
+    def fake_run_pass(run_args, **kwargs):
+        observed["campaign"] = run_args.codex_executable
+
+    monkeypatch.setattr(runner, "run_pass", fake_run_pass)
+
+    assert runner.main(["bounded"]) == 0
+    assert observed == {
+        "provider": selected,
+        "capability": selected,
+        "campaign": selected,
+    }
 
 
 def test_codex_command_uses_required_schema_capability(monkeypatch, tmp_path) -> None:

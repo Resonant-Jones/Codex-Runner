@@ -16,6 +16,7 @@ dev = ["pytest>=8.0", "build>=1.2"]
 
 [project.scripts]
 codexrun = "codex_runner.runner:main"
+codexrun-mcp = "codex_runner.mcp_server:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
