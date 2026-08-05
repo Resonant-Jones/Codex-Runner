@@ -42,3 +42,29 @@ def test_environment_repo_root_is_supported(tmp_path: Path) -> None:
         cwd=tmp_path,
         environ={REPO_ROOT_ENV: str(root)},
     ) == root
+
+
+def test_git_environment_cannot_redirect_fallback_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _git_init(tmp_path / "repo")
+    nested = root / "a" / "b"
+    nested.mkdir(parents=True)
+    unrelated = _git_init(tmp_path / "unrelated")
+
+    monkeypatch.setenv("GIT_DIR", str(unrelated / ".git"))
+    monkeypatch.setenv("GIT_WORK_TREE", str(unrelated))
+
+    assert resolve_repo_root(cwd=nested, environ={}) == root
+
+
+def test_git_environment_cannot_redirect_configured_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _git_init(tmp_path / "repo")
+    unrelated = _git_init(tmp_path / "unrelated")
+
+    monkeypatch.setenv("GIT_DIR", str(unrelated / ".git"))
+    monkeypatch.setenv("GIT_WORK_TREE", str(unrelated))
+
+    assert resolve_repo_root(root, cwd=tmp_path, environ={}) == root
