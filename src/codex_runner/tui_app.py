@@ -661,6 +661,10 @@ class CampaignRunnerTUI(App[list[str] | None]):
                 updated.provider = next_value.strip().lower()
                 i += 2
                 continue
+            if part == "--codex-executable" and next_value:
+                updated.codex_executable = next_value
+                i += 2
+                continue
             if part == "--repo-root" and next_value:
                 updated.repo_root = next_value
                 i += 2
