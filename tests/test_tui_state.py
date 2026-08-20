@@ -14,6 +14,7 @@ def test_profile_round_trip(tmp_path: Path, monkeypatch) -> None:
     settings.passes = 3
     settings.verify = True
     settings.branch_per_campaign = False
+    settings.codex_executable = "/opt/codex/bin/codex"
     settings.codex_config = ["approval_policy=never"]
     settings.claude_settings = ["/tmp/claude-settings.json"]
 
@@ -27,6 +28,7 @@ def test_profile_round_trip(tmp_path: Path, monkeypatch) -> None:
     assert loaded.settings.passes == 3
     assert loaded.settings.verify is True
     assert loaded.settings.branch_per_campaign is False
+    assert loaded.settings.codex_executable == "/opt/codex/bin/codex"
     assert loaded.settings.codex_config == ["approval_policy=never"]
     assert loaded.settings.claude_settings == ["/tmp/claude-settings.json"]
     assert loaded.presets["fast"]["passes"] == 2
@@ -76,3 +78,13 @@ def test_to_cli_args_execute_mode(tmp_path: Path) -> None:
 
     assert "--execute" in args
     assert "--dry-run" not in args
+
+
+def test_to_cli_args_includes_codex_executable(tmp_path: Path) -> None:
+    settings = tui_state.default_settings(cwd=tmp_path)
+    settings.codex_executable = "/opt/codex/bin/codex"
+
+    args = tui_state.to_cli_args(settings)
+
+    option_index = args.index("--codex-executable")
+    assert args[option_index + 1] == "/opt/codex/bin/codex"

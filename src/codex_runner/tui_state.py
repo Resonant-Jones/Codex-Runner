@@ -31,6 +31,7 @@ PRESET_ALLOWED_KEYS = {
 @dataclass
 class RunnerSettings:
     provider: str = "codex"
+    codex_executable: str = ""
 
     repo_root: str = ""
     audit_prompt_file: str = ""
@@ -162,6 +163,9 @@ def settings_from_dict(
 
     return RunnerSettings(
         provider=_coerce_provider(raw.get("provider"), base.provider),
+        codex_executable=_coerce_str(
+            raw.get("codex_executable"), base.codex_executable
+        ),
         repo_root=_coerce_str(raw.get("repo_root"), base.repo_root),
         audit_prompt_file=_coerce_str(
             raw.get("audit_prompt_file"), base.audit_prompt_file
@@ -286,6 +290,7 @@ def load_profile_data(cwd: Path | None = None) -> ProfileData:
 def settings_to_dict(settings: RunnerSettings) -> dict[str, Any]:
     return {
         "provider": settings.provider,
+        "codex_executable": settings.codex_executable,
         "repo_root": settings.repo_root,
         "audit_prompt_file": settings.audit_prompt_file,
         "audit_schema_file": settings.audit_schema_file,
@@ -397,6 +402,8 @@ def to_cli_args(settings: RunnerSettings) -> list[str]:
 
     if settings.codex_model:
         args.extend(["--codex-model", settings.codex_model])
+    if settings.codex_executable:
+        args.extend(["--codex-executable", settings.codex_executable])
     if settings.codex_model_audit:
         args.extend(["--codex-model-audit", settings.codex_model_audit])
     if settings.codex_model_compiler:

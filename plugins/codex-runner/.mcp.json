@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "codex-runner": {
+      "command": "codexrun-mcp"
+    }
+  }
+}

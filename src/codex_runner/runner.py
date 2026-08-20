@@ -48,6 +48,7 @@ TASK_RESULT_STATUS_VALUES = {"success", "failed", "blocked"}
 CODEX_REQUIRED_STRUCTURED_OUTPUT_CAPABILITY = "--output-schema"
 CODEX_CAPABILITY_INSPECTION_COMMAND = ("codex", "exec", "--help")
 CODEX_VERSION_INSPECTION_COMMAND = ("codex", "--version")
+CODEX_EXECUTABLE_OVERRIDE_OPTION = "--codex-executable"
 
 MAPPING_START = "<!-- RUNNER_TASK_MAP -->"
 MAPPING_END = "<!-- /RUNNER_TASK_MAP -->"
@@ -335,7 +336,50 @@ def ensure_repo_root(repo_root: Path, debug: bool) -> None:
         )
 
 
-def ensure_provider_available(provider: str) -> str:
+def select_codex_executable(override: str | Path | None = None) -> str:
+    """Select one trusted Codex executable for the deterministic runner.
+
+    Without an override, this preserves the historical PATH lookup. An
+    override is an operator-controlled absolute path and must identify an
+    executable regular file before any provider command is allowed to run.
+    """
+    if override is None:
+        executable = shutil_which("codex")
+        if executable:
+            return str(Path(executable).resolve())
+        raise RunnerError(
+            "Codex executable not found on PATH. Set "
+            f"{CODEX_EXECUTABLE_OVERRIDE_OPTION} to an absolute executable path "
+            "or install Codex CLI."
+        )
+
+    raw_override = str(override).strip()
+    if not raw_override:
+        raise RunnerError(
+            f"{CODEX_EXECUTABLE_OVERRIDE_OPTION} must be a non-empty absolute path"
+        )
+    candidate = Path(raw_override).expanduser()
+    if not candidate.is_absolute():
+        raise RunnerError(
+            f"{CODEX_EXECUTABLE_OVERRIDE_OPTION} must be an absolute path: "
+            f"{raw_override}"
+        )
+    resolved = candidate.resolve(strict=False)
+    if not resolved.is_file():
+        raise RunnerError(
+            f"{CODEX_EXECUTABLE_OVERRIDE_OPTION} is not a regular file: "
+            f"{resolved}"
+        )
+    if not os.access(resolved, os.X_OK):
+        raise RunnerError(
+            f"{CODEX_EXECUTABLE_OVERRIDE_OPTION} is not executable: {resolved}"
+        )
+    return str(resolved)
+
+
+def ensure_provider_available(
+    provider: str, codex_executable: str | Path | None = None
+) -> str:
     binaries = {
         "codex": "codex",
         "claude": "claude",
@@ -343,6 +387,9 @@ def ensure_provider_available(provider: str) -> str:
     binary = binaries.get(provider)
     if not binary:
         raise RunnerError(f"Unsupported provider: {provider}")
+    if provider == "codex":
+        return select_codex_executable(codex_executable)
+
     executable = shutil_which(binary)
     if not executable:
         raise RunnerError(
@@ -352,22 +399,36 @@ def ensure_provider_available(provider: str) -> str:
 
 
 def inspect_codex_cli_capability(
-    repo_root: Path, debug: bool = False
+    repo_root: Path,
+    debug: bool = False,
+    codex_executable: str | Path | None = None,
 ) -> CodexCliCapability:
-    executable = shutil_which("codex")
-    if not executable:
-        raise RunnerError(
-            "Codex CLI structured-output compatibility check failed.\n"
-            "detected_version: unavailable\n"
-            f"missing_required_capability: {CODEX_REQUIRED_STRUCTURED_OUTPUT_CAPABILITY}\n"
-            "capability_inspection_command: codex exec --help\n"
-            "remediation: install Codex CLI, then verify that local `codex exec --help` "
-            "lists `--output-schema`.\n"
-            "provider_execution_occurred: false"
-        )
+    if codex_executable is not None:
+        executable = select_codex_executable(codex_executable)
+    else:
+        try:
+            executable = select_codex_executable()
+        except RunnerError:
+            raise RunnerError(
+                "Codex CLI structured-output compatibility check failed.\n"
+                "detected_version: unavailable\n"
+                f"missing_required_capability: {CODEX_REQUIRED_STRUCTURED_OUTPUT_CAPABILITY}\n"
+                "capability_inspection_command: codex exec --help\n"
+                "remediation: install Codex CLI, then verify that local `codex exec --help` "
+                "lists `--output-schema`.\n"
+                "provider_execution_occurred: false"
+            )
 
+    # Keep the no-override invocation as the historical bare `codex` PATH
+    # lookup. The main campaign path passes the resolved selector explicitly,
+    # so inspection and provider execution share that exact binary there.
+    command_executable = (
+        executable if codex_executable is not None else "codex"
+    )
+    version_command = [command_executable, "--version"]
+    help_command = [command_executable, "exec", "--help"]
     version_result = run_cmd(
-        list(CODEX_VERSION_INSPECTION_COMMAND),
+        version_command,
         cwd=repo_root,
         capture_output=True,
         debug=debug,
@@ -376,7 +437,7 @@ def inspect_codex_cli_capability(
     version = version_output if version_result.returncode == 0 and version_output else "unknown"
 
     help_result = run_cmd(
-        list(CODEX_CAPABILITY_INSPECTION_COMMAND),
+        help_command,
         cwd=repo_root,
         capture_output=True,
         debug=debug,
@@ -392,7 +453,7 @@ def inspect_codex_cli_capability(
     return CodexCliCapability(
         executable=executable,
         version=version,
-        inspection_command=CODEX_CAPABILITY_INSPECTION_COMMAND,
+        inspection_command=tuple(help_command),
         inspection_exit_code=help_result.returncode,
         supports_output_schema=supports_output_schema,
         inspection_output=inspection_output,
@@ -400,9 +461,11 @@ def inspect_codex_cli_capability(
 
 
 def ensure_codex_cli_compatible(
-    repo_root: Path, debug: bool = False
+    repo_root: Path,
+    debug: bool = False,
+    codex_executable: str | Path | None = None,
 ) -> CodexCliCapability:
-    capability = inspect_codex_cli_capability(repo_root, debug)
+    capability = inspect_codex_cli_capability(repo_root, debug, codex_executable)
     if capability.supports_output_schema:
         return capability
 
@@ -1169,8 +1232,14 @@ def run_codex_exec(
     model: str | None,
     configs: list[str],
     debug: bool,
+    codex_executable: str | Path | None = None,
 ) -> None:
-    cmd: list[str] = ["codex"]
+    executable = (
+        select_codex_executable(codex_executable)
+        if codex_executable is not None
+        else "codex"
+    )
+    cmd: list[str] = [executable]
     if model:
         cmd.extend(["--model", model])
     for config in configs:
@@ -1250,17 +1319,20 @@ def run_provider_exec(
     model: str | None,
     settings: list[str],
     debug: bool,
+    codex_executable: str | Path | None = None,
 ) -> None:
     if provider == "codex":
-        run_codex_exec(
-            repo_root,
-            prompt_text=prompt_text,
-            output_schema=output_schema,
-            output_path=output_path,
-            model=model,
-            configs=settings,
-            debug=debug,
-        )
+        kwargs: dict[str, Any] = {
+            "prompt_text": prompt_text,
+            "output_schema": output_schema,
+            "output_path": output_path,
+            "model": model,
+            "configs": settings,
+            "debug": debug,
+        }
+        if codex_executable is not None:
+            kwargs["codex_executable"] = codex_executable
+        run_codex_exec(repo_root, **kwargs)
         return
     if provider == "claude":
         run_claude_exec(
@@ -1461,6 +1533,7 @@ def run_task_agent(
     model: str | None,
     settings: list[str],
     debug: bool,
+    codex_executable: str | Path | None = None,
 ) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_root = Path(tmpdir)
@@ -1474,6 +1547,7 @@ def run_task_agent(
             model=model,
             settings=settings,
             debug=debug,
+            codex_executable=codex_executable,
         )
         payload = json_read(output)
 
@@ -1522,6 +1596,11 @@ def run_pass(
     cli_args: list[str],
 ) -> None:
     repo_root = args.repo_root
+    codex_executable = None
+    if args.provider == "codex":
+        codex_executable = select_codex_executable(
+            getattr(args, "codex_executable", None)
+        )
     active_settings = provider_settings(args)
     active_models = provider_model_map(args)
     active_settings_sanitized = sanitize_provider_settings(active_settings)
@@ -1573,6 +1652,7 @@ def run_pass(
             model=active_models["audit"],
             settings=active_settings,
             debug=args.debug,
+            codex_executable=codex_executable,
         )
         audit_payload = json_read(stage_a_output_path)
 
@@ -1597,6 +1677,7 @@ def run_pass(
             model=active_models["compiler"],
             settings=active_settings,
             debug=args.debug,
+            codex_executable=codex_executable,
         )
         campaign_set_payload = json_read(stage_b_output_path)
 
@@ -1841,6 +1922,7 @@ def run_pass(
                     model=provider_model_for_stage(args, "task"),
                     settings=active_settings,
                     debug=args.debug,
+                    codex_executable=codex_executable,
                 )
 
                 enforce_scope_guard(
@@ -1984,6 +2066,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--provider",
         choices=["codex", "claude"],
         default="codex",
+    )
+    parser.add_argument(
+        CODEX_EXECUTABLE_OVERRIDE_OPTION,
+        dest="codex_executable",
+        default=None,
+        help=(
+            "Absolute path to the Codex executable. When omitted, resolve "
+            "codex from PATH."
+        ),
     )
 
     parser.add_argument(
@@ -2157,9 +2248,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(resolved_argv)
 
     ensure_repo_root(args.repo_root, args.debug)
-    provider_executable = ensure_provider_available(args.provider)
+    configured_codex_executable = getattr(args, "codex_executable", None)
+    if configured_codex_executable is None:
+        provider_executable = ensure_provider_available(args.provider)
+    else:
+        provider_executable = ensure_provider_available(
+            args.provider, configured_codex_executable
+        )
     if args.provider == "codex" and provider_executable:
-        ensure_codex_cli_compatible(args.repo_root, args.debug)
+        args.codex_executable = provider_executable
+        ensure_codex_cli_compatible(
+            args.repo_root, args.debug, args.codex_executable
+        )
 
     base_ref_sha = git_resolve_ref(args.repo_root, args.base_ref, args.debug)
     cli_args = sanitize_cli_args(resolved_argv)

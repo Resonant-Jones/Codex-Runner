@@ -10,12 +10,23 @@ pytest.importorskip("textual")
 from textual.widgets import Input, Static
 
 from codex_runner.tui_app import CampaignRunnerTUI
-from codex_runner.tui_state import RunnerSettings
+from codex_runner.tui_state import RunnerSettings, to_cli_args
 
 
 def test_tui_has_command_binding() -> None:
     keys = [binding.key for binding in CampaignRunnerTUI.BINDINGS]
     assert "/" in keys
+
+
+def test_initial_codex_executable_override_is_preserved() -> None:
+    app = CampaignRunnerTUI(
+        initial_args=["--codex-executable", "/opt/codex/bin/codex"]
+    )
+
+    assert app.active_settings.codex_executable == "/opt/codex/bin/codex"
+    cli_args = to_cli_args(app.active_settings)
+    option_index = cli_args.index("--codex-executable")
+    assert cli_args[option_index + 1] == "/opt/codex/bin/codex"
 
 
 def test_slash_focuses_command_input() -> None:

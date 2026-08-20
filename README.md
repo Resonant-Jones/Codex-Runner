@@ -150,6 +150,14 @@ Codexify durable mutation remains outside this repository's default path.
 Human approval remains the final authority boundary.
 ```
 
+For the deterministic Codex provider, an operator may pin one local binary
+with `--codex-executable /absolute/path/to/codex`. The path must already be an
+executable regular file; otherwise Runner stops before capability inspection
+or provider execution. Without the option, Runner keeps the normal `PATH`
+lookup. The selected binary is shared by capability inspection and every
+`codex exec` stage. This option is not exposed as Guardian or Pi Loop
+authority, and it does not turn receipts into approval.
+
 ---
 
 ## Quick Start
@@ -173,6 +181,20 @@ Install development dependencies:
 ```bash
 python3 -m pip install -e '.[dev]'
 ```
+
+### Codex plugin (experimental)
+
+This checkout includes a local Codex plugin bundle at
+`plugins/codex-runner/`. After installing the package, the plugin's stdio MCP
+configuration launches the `codexrun-mcp` entry point and exposes exactly one
+tool: `codex_runner_campaign_dry_run`.
+
+The tool is transport-only and forces the Deterministic Campaign Runner into
+`--dry-run` mode. It does not expose Pi Loop or Guardian operations, does not
+create an adapter-owned authoritative receipt, and does not grant approval or
+execution authority. Register the plugin bundle in the local marketplace used
+by the Codex installation before installing it; this repository change does
+not modify a user's marketplace configuration.
 
 ---
 

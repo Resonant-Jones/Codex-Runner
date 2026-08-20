@@ -17,6 +17,27 @@ structured-output requirement.
 This contract does not change MCP, Pi Loop, Guardian, receipt authority, or
 campaign semantics.
 
+## Executable selection and trust boundary
+
+The deterministic Runner accepts an optional operator-supplied executable:
+
+```text
+codexrun --codex-executable /absolute/path/to/codex ...
+```
+
+When the option is absent, Runner preserves the default `PATH` lookup for
+`codex`. When it is present, Runner requires an absolute path to an existing,
+executable regular file and resolves that path before any provider command is
+run. The resolved path is then passed unchanged through campaign execution,
+capability inspection, and `run_codex_exec`; capability success cannot switch
+the provider to another PATH entry.
+
+This path is local operator configuration, not task-packet content, provider
+output, receipt evidence, MCP tool input, Guardian input, or Pi Loop input.
+The override belongs only to the deterministic Runner CLI seam. Guardian and
+Pi Loop remain unchanged and do not gain provider execution authority from
+this selector.
+
 ## Required capability
 
 The Codex provider path requires `codex exec --help` to advertise the exact
@@ -45,6 +66,9 @@ inspection commands:
 codex --version
 codex exec --help
 ```
+
+With `--codex-executable`, both commands use the selected absolute path rather
+than the bare `codex` name.
 
 Compatibility requires:
 
